@@ -6,6 +6,7 @@ WriteMakefile(
 	AUTHOR         => 'Dmitry Karasik <dmitry@karasik.eu.org>',
 	ABSTRACT_FROM  => 'Eboks.pm',
 	VERSION_FROM   => 'Eboks.pm',
+	EXE_FILES         => ['bin/eboks2pop'],
 	PREREQ_PM      => { 
 		'LWP'          => 0,
 		'DateTime'     => 0,
