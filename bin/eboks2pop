@@ -1,0 +1,322 @@
+#!env perl
+use strict;
+use warnings;
+use Getopt::Long;
+use Socket;
+use IO::Socket;
+use IO::Lambda qw(:all get_frame set_frame);
+use IO::Lambda::Socket qw(:all);
+use Net::Eboks;
+
+my %opt = (
+	port  => 110,
+	debug => 0,
+	help  => 0,
+);
+
+my $version = 0.01;
+
+sub usage
+{
+	print <<USAGE;
+
+$0
+
+   --port      - list on port, 110 by default
+   --debug     - debug on stderr
+   --help 
+
+USAGE
+	exit 1;
+}
+
+GetOptions(\%opt,
+	"port|p=i",
+	"debug",
+	"help|h",
+) or usage;
+
+$opt{help} and usage();
+
+print "Listening on port $opt{port}...\n";
+
+my $conn_timeout = 30;
+my $server = IO::Socket::INET-> new(
+	Listen    => 5,
+	LocalPort => $opt{port},
+	Blocking  => 0,
+	ReuseAddr => 1,
+);
+die $! unless $server;
+
+sub debug($)
+{
+	return unless $opt{debug};
+	my $t = scalar localtime;
+	warn "$t: $_[0]\n";
+}
+
+my $serv = lambda {
+	context $server;
+	accept {
+		# incoming connection
+		my $conn = shift;
+		again;
+
+		unless ( ref($conn)) {
+			debug("accept() error:$conn") if !ref($conn);
+			return;
+		}
+		$conn-> blocking(0);
+
+       		my $hostname = inet_ntoa((sockaddr_in(getsockname($conn)))[1]);
+		
+		debug("[$hostname] connect");
+		
+		my $buf     = '';
+		my $session = { hostname => $hostname };
+		my $resp    = ok("POP3 server ready\x{a}");
+		context writebuf, $conn, \$resp, length($resp), 0, $conn_timeout;
+	tail {
+		context readbuf, $conn, \$buf, qr/^([^\r\n]*)[\r\n]+/s, $conn_timeout;
+	tail {
+		my @frame = get_frame;
+		my ( $match, $error) = @_;
+		unless ( defined($match)) {
+			debug("[$hostname] session error: $error");
+			undef @frame; # circular refs!
+			return close($conn);
+		}
+		substr( $buf, 0, length($match)) = '';
+		my $resp = handle( $match, $session);
+		context ref($resp) ? $resp : lambda {};
+	tail {
+		$resp = shift if ref $resp;
+		$resp .= "\x{a}";
+		context writebuf, $conn, \$resp, length($resp), 0, $conn_timeout;
+	tail {
+		if ($session->{quit}) {
+			debug("[$hostname] QUIT");
+			undef @frame; # circular refs!
+			close($conn);
+		} else {
+			set_frame(@frame);
+			again;
+		}
+	}}}}}
+};
+
+sub fail($) { "-ERR $_[0]" }
+sub ok($) { "+OK $_[0]" }
+sub multi
+{
+	my @msgs;
+	my $comment = shift;
+	for ( @_ ) {
+		my $p = $_;
+		$p .= ' ' if $p eq '.';
+		push @msgs, $p;
+	}
+	return ok(join("\x{a}", $comment, @msgs, '.'));
+}
+
+sub remotefail($)
+{
+	debug($_[0]);
+	fail("e-boks.dk says: $_[0]");
+}
+
+sub want_list
+{
+	my $session = shift;
+	return lambda {
+		return 1 if $session->{list};
+		return 0 if defined $session->{error};
+
+		context $session->{obj}->fetch_request( $session->{obj}->folders );
+	tail {
+		my ( $folders, $error ) = @_;
+		$session->{error} = $error;
+		return 0 unless $folders;
+
+		$session->{folder} = $folders->{Inbox};
+		context $session->{obj}->list_all_messages($session->{folder}->{id});
+	tail {
+		my ( $list, $error ) = @_;
+		unless ($list) {
+			$session->{error} = $error;
+			return 0;
+		}
+
+		$session->{list} = $list;
+		$session->{msgs} = scalar keys %$list;
+		$session->{keys} = [ sort keys %$list ];
+		return 1;
+	}}};
+}
+
+sub pop3_capa
+{
+	multi("my caps", 
+		"USER", "UIDL", "TOP", 
+		"EXPIRE $conn_timeout", "IMPLEMENTATION Shlemazle-Plotz-v$Net::Eboks::VERSION/$version"
+	)
+}
+
+sub pop3_user
+{
+	my ($session, $user) = @_;
+	return fail("already authorized") if exists $session->{user};
+	return fail("bad username: must be CPR:CODE, f.ex. 205674-5675:dc456gh") 
+		unless ($user//'') =~ /^(\d{6})\-?(\d{4})\:(\w+)$/;
+	$session->{user} = $1 . $2;
+	$session->{code} = $3;
+	return ok("hello");
+}
+
+sub pop3_pass
+{
+	my ($session, $pass) = @_;
+	return fail("already authorized") if exists $session->{pass};
+	$session->{pass} = $pass;
+
+	$session->{obj}  = Net::Eboks->new(
+		cpr        => $session->{user},
+		activation => $session->{code},
+		password   => $session->{pass},
+	);
+	return lambda {
+		debug("[$session->{hostname}] login");
+		context $session->{obj}->fetch_request($session->{obj}->login);
+	tail {
+		my ( $uname, $error ) = @_;
+		debug("[$session->{hostname}] $error") if $error;
+		return remotefail($error) unless defined $uname;
+		$session->{authorized} = 1;
+		debug("[$session->{hostname}] authorized");
+		return ok("Welcome $uname");
+	}};
+}
+
+sub pop3_quit
+{
+	my ($session) = @_;
+	$session->{quit} = 1;
+	return ok("bye");
+}
+
+sub pop3_stat
+{
+	my ($session) = @_;
+	return fail("not authorized") unless $session->{authorized};
+	return lambda {
+		context want_list($session);
+		tail { shift ? ok($session->{msgs}) : remotefail($session->{error}) }
+	};
+}
+
+sub pop3_list
+{
+	my ($session, $id) = @_;
+	return fail("not authorized") unless $session->{authorized};
+	return lambda {
+		context want_list($session);
+	tail { 
+		return remotefail($session->{error}) unless shift;
+		if ( defined $id) {
+			return fail("bad command") unless $id =~ /^\d+$/;
+			return fail("no such msg") if $id <= 0 || $id > $session->{msgs};
+			my $msg = $session->{keys}->[$id - 1];
+			return ok($id . ' '. $session->{list}->{$msg}->{size});
+		} else {
+			return multi("$session->{msgs} messages", (map { "$_ " . $session->{list}->{$session->{keys}->[$_-1]}->{size} } (1..$session->{msgs})));
+		}
+	}}
+}
+
+sub pop3_uidl
+{
+	my ($session, $id) = @_;
+	return fail("not authorized") unless $session->{authorized};
+
+	return lambda {
+		context want_list($session);
+	tail { 
+		return remotefail($session->{error}) unless shift;
+		if ( defined $id) {
+			return fail("bad command") unless $id =~ /^\d+$/;
+			return fail("no such msg") if $id <= 0 || $id > $session->{msgs};
+			return ok($id . ' ' . $session->{keys}->[$id-1]);
+		} else {
+			return multi("$session->{msgs} messages", (map { "$_ " . $session->{keys}->[$_-1] } (1..$session->{msgs})));
+		}
+	}}
+}
+
+sub pop3_noop { ok('') }
+sub pop3_dele { ok("not deleted, actually") }
+sub pop3_rset { fail("not implemented") }
+sub pop3_apop { fail("not implemented") }
+
+sub pop3_retr
+{
+	my ( $session, $id ) = @_;
+	return fail("bad argument") unless defined($id) && $id =~ /^\d+$/ && $id > 0;
+
+	lambda {
+		context want_list($session);
+	tail {
+		return remotefail($session->{error}) unless shift;
+		return fail("bad argument") if $id > $session->{msgs};
+		context $session->{obj}->fetch_message_and_attachments( $session->{list}->{$session->{keys}->[$id-1]} );
+	tail {
+		my $msg = shift;
+		return remotefail($session->{error}) unless $msg;
+		$msg = $session->{obj}->assemble_mail(%$msg);
+		return multi('message follows', split("\n", $msg));
+	}}}
+}
+
+sub pop3_top
+{
+	my ( $session, $id, $lines ) = @_;
+	return fail("bad argument") unless defined($id) && $id =~ /^\d+$/ && $id > 0 && defined($lines) && $lines =~ /^\d+$/ && $lines > 0;
+
+	lambda {
+		context want_list($session);
+	tail {
+		return remotefail($session->{error}) unless shift;
+		return fail("bad argument") if $id > $session->{msgs};
+		context $session->{obj}->fetch_message_and_attachments( $session->{list}->{$session->{keys}->[$id-1]} );
+	tail {
+		my $msg = shift;
+		return remotefail($session->{error}) unless $msg;
+		$msg = $session->{obj}->assemble_mail(%$msg);
+		my @lines = split("\n", $msg);
+		splice(@lines, $lines);
+		return multi('top of message follows', @lines);
+	}}}
+}
+
+sub handle
+{
+	my ( $cmd, $session ) = @_;
+
+	chomp $cmd;
+	$cmd =~ s/^\s*//;
+	$cmd =~ s/\s*$//;
+	my @cmd = split(' ', $cmd);
+	$cmd[0] //= '';
+	$cmd[0] = uc $cmd[0];
+	
+	debug("[$session->{hostname}] @cmd") unless $cmd[0] =~ /^(USER|PASS)$/;
+
+	my $msgs = 2;
+
+	my $can = __PACKAGE__->can("pop3_\L$cmd[0]");
+	return fail("bad command") unless $can;
+	shift @cmd;
+	return $can->($session, @cmd);
+}
+
+$serv-> wait;

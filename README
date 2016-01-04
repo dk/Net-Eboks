@@ -1,0 +1,36 @@
+This is perl interface for http://eboks.dk/, Danish national email system. 
+
+Included a simple POP server for proxying e-boks for simple mail reading.
+
+Howto
+=====
+
+1) For windows you'll need strawberry perl from http://strawberryperl.com/ .
+
+2) Install this module by opening command line and typing 'cpan http://github.com/dk/Net-Eboks'
+
+3) On command line, type eboks2pop
+
+4) Connect your mail client to POP3 server at localhost, where username is
+your CPR code and your e-boks activation code, such as f.ex: 0123456-7890:kwdElkwjdc
+and password is your mobile pincode. These can be found in your e-boks settings.
+
+Enjoy!
+
+Other stuff
+===========
+
+.fetchmailrc
+------------
+poll localhost
+with proto POP3                      
+user "000000-0000:wdcwdc" 
+there with password "password"        
+mda /usr/bin/procmail
+
+.procmailrc
+-----------
+:0:
+* ^X-Net-Eboks:.*
+eboks
+
