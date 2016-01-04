@@ -7,7 +7,8 @@ Howto
 
 1) For windows you'll need strawberry perl from http://strawberryperl.com/ .
 
-2) Install this module by opening command line and typing 'cpan http://github.com/dk/Net-Eboks'
+2) Install this module by opening command line and typing 'cpanm git://github.com/dk/Net-Eboks'
+If this fails, try this: 'cpan Net::Eboks'.
 
 3) On command line, type eboks2pop
 

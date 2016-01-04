@@ -366,7 +366,7 @@ Net::Eboks - perl API for http://eboks.dk/
 
 =head1 DESCRIPTION
 
-Read-only interface for eboks. 
+Read-only interface for eboks. See README for more info.
 
 =head1 AUTHOR
 
