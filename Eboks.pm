@@ -258,7 +258,7 @@ sub assemble_mail
 		Type     => $self->mime_type($msg),
 		Encoding => 'base64',
 		Data     => $opt{body},
-		Filename => $msg->{name} . '.' . $msg->{format},
+		Filename => $self->filename($msg),
 	) if exists $opt{body};
 
 	my $attachments = $self->attachments($msg);
@@ -268,7 +268,7 @@ sub assemble_mail
 			Type     => $self->mime_type($att),
 			Encoding => 'base64',
 			Data     => $opt{attachments}->{$att_id},
-			Filename => $att->{name} . '.' . $att->{format},
+			Filename => $self->filename($att),
 		);
 	}
 
