@@ -1,4 +1,4 @@
-#!env perl
+#! env perl
 use strict;
 use warnings;
 use Getopt::Long;
@@ -221,7 +221,12 @@ sub pop3_stat
 	return fail("not authorized") unless $session->{authorized};
 	return lambda {
 		context want_list($session);
-		tail { shift() ? ok($session->{msgs}) : remotefail($session->{error}) }
+		tail {
+			return remotefail($session->{error}) unless shift;
+			my $sum = 0;
+			$sum += $_->{size} for values %{$session->{list}};
+			return ok($session->{msgs} . ' ' . $sum);
+		}
 	};
 }
 
