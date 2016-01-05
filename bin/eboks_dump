@@ -54,6 +54,7 @@ sub fetch
 }
 
 fetch($_) for qw(cpr activation pincode);
+$opt{cpr} =~ s/\-//g;
 
 my $e = Net::Eboks->new(
 	cpr        => $opt{cpr},
