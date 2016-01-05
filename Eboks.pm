@@ -230,14 +230,26 @@ sub mime_type
 	}
 }
 
+sub first_value
+{
+	my ($self, $entry) = @_;
+	if ( ref($entry) eq 'HASH') {
+		my $k = (sort keys %$entry)[0];
+		return $entry->{$k};
+	} elsif ( ref($entry) eq 'ARRAY') {
+		return $entry->[0];
+	} else {
+		return "bad entry";
+	}
+}
+
 sub assemble_mail
 {
 	my ( $self, %opt ) = @_;
 
 	my $msg = $opt{message};
-	my $sender = (sort keys %{ $msg->{Sender} })[0];
-	$sender = $msg->{Sender}->{$sender // ''};
-	$sender = $sender->{content} if $sender;
+	my $sender = $self->first_value($msg->{Sender});
+	$sender = $sender->{content} if ref($sender) eq 'HASH';
 	$sender //= 'unknown';
 
 	my $received = $msg->{receivedDateTime} // '';
