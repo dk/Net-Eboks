@@ -47,7 +47,14 @@ my $server = IO::Socket::INET-> new(
 	Blocking  => 0,
 	ReuseAddr => 1,
 );
-die $! unless $server;
+unless ($server) {
+	my $err = $!;
+	print STDERR <<ERR;
+Cannot bind to port: $! .
+(Not running as root? Try an unprivileged port, -p 8110 for example)
+ERR
+	exit 1;
+}
 
 sub debug($)
 {
