@@ -1,4 +1,9 @@
 :0:
 * ^X-Net-Eboks:.*
-eboks
+* To: My Name .*
+eboks/user1
 
+:0:
+* ^X-Net-Eboks:.*
+* To: My Wife .*
+eboks/user2
