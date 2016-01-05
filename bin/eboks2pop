@@ -10,6 +10,7 @@ use Net::Eboks;
 
 my %opt = (
 	port  => 110,
+	addr  => '0.0.0.0',
 	debug => 0,
 	help  => 0,
 );
@@ -22,7 +23,8 @@ sub usage
 
 $0
 
-   --port      - list on port, 110 by default
+   --port      - listen on port, 110 by default
+   --addr      - listen on address, 0.0.0.0 by default
    --debug     - debug on stderr
    --help 
 
@@ -32,17 +34,19 @@ USAGE
 
 GetOptions(\%opt,
 	"port|p=i",
+	"addr|a=s",
 	"debug",
 	"help|h",
 ) or usage;
 
 $opt{help} and usage();
 
-print "Listening on port $opt{port}...\n";
+print "Listening on $opt{addr}:$opt{port}...\n";
 
 my $conn_timeout = 30;
 my $server = IO::Socket::INET-> new(
 	Listen    => 5,
+	LocalAddr => $opt{addr},
 	LocalPort => $opt{port},
 	Blocking  => 0,
 	ReuseAddr => 1,
@@ -50,7 +54,7 @@ my $server = IO::Socket::INET-> new(
 unless ($server) {
 	my $err = $!;
 	print STDERR <<ERR;
-Cannot bind to port: $! .
+Cannot bind to socket: $! .
 (Not running as root? Try an unprivileged port, -p 8110 for example)
 ERR
 	exit 1;
