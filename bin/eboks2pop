@@ -138,7 +138,6 @@ sub want_list
 	my $session = shift;
 	return lambda {
 		return 1 if $session->{list};
-		return 0 if defined $session->{error};
 
 		context $session->{obj}->fetch_request( $session->{obj}->folders );
 	tail {
@@ -278,7 +277,7 @@ sub pop3_retr
 		context $session->{obj}->fetch_message_and_attachments( $session->{list}->{$session->{keys}->[$id-1]} );
 	tail {
 		my $msg = shift;
-		return remotefail($session->{error}) unless $msg;
+		return remotefail(shift) unless $msg;
 		$msg = $session->{obj}->assemble_mail(%$msg);
 		return multi('message follows', split("\n", $msg));
 	}}}
@@ -292,7 +291,7 @@ sub pop3_top
 	lambda {
 		context want_list($session);
 	tail {
-		return remotefail($session->{error}) unless shift;
+		return remotefail(shift) unless shift;
 		return fail("bad argument") if $id > $session->{msgs};
 		context $session->{obj}->fetch_message_and_attachments( $session->{list}->{$session->{keys}->[$id-1]} );
 	tail {
