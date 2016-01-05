@@ -6,6 +6,22 @@ This is perl interface for http://eboks.dk/, Danish national email system.
 Included a simple POP server for proxying e-boks for read-only mail access
 and a simple downloader.
 
+Try online
+==========
+
+Direct your mail client to POP3 server eboks2pop.karasik.eu.org (port 110).
+
+Username is your CPR code and your e-boks activation code, 
+such as f.ex: 0123456-7890:kwdElkwjdc and password is your 
+mobile pincode. 
+
+WARNING!!! This is my own server, I do not log your data, and I guarantee my
+best efforts to keep the server from being compromised. Still, if you use your
+eboks login there it is at your own risk !!!
+
+Try yourself
+============
+
 Prerequesites
 -------------
 
