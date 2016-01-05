@@ -5,3 +5,4 @@ Changes
 Makefile.PL
 Eboks.pm
 bin/eboks2pop
+t/01.t
