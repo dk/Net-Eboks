@@ -298,7 +298,7 @@ sub assemble_mail
 
 	return 
 		'From noreply@localhost ' . 
-		$date->strftime('%a %b %d %H:%M:%S %Y') . 
+		$date->strftime('%a %b %d %H:%M:%S %Y') . "\n" .
 		$mail->stringify
 		;
 }
