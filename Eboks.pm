@@ -2,6 +2,7 @@ package Net::Eboks;
 
 use strict;
 use warnings;
+use Encode qw(encode decode);
 use DateTime;
 use HTTP::Request;
 use Digest::SHA qw(sha256_hex);
@@ -13,7 +14,7 @@ use IO::Lambda qw(:all);
 use IO::Lambda::HTTP qw(http_request);
 
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub new
 {
@@ -61,7 +62,15 @@ sub response
 	return $response->decoded_content unless $decode;
 	
 	my %options = ref($decode) ? %$decode : ();
-	my $xml = XMLin($response->decoded_content, ForceArray => 1, %options);
+	my $content = $response->decoded_content;
+	if ( $content !~ /[^\x00-\xff]/ && $content =~ /[\x80-\xff]/ ) {
+		# try to upgrade
+		eval { 
+			my $c = decode('latin1', $content);
+			$content = $c;
+		};
+	}
+	my $xml = XMLin($content, ForceArray => 1, %options);
 	if ( $xml && ref($xml) eq 'HASH' ) {
 		return $xml;
 	} else {
@@ -201,7 +210,7 @@ sub filename    {
 	$fn =~ s[:\\\/][_];
 	my $fmt = lc($_[1]->{format});
 	$fmt = 'txt' if $fmt eq 'plain';
-	$fn . '.' .lc($_[1]->{format})
+	return $fn . '.' .lc($_[1]->{format})
 }
 
 sub mime_type
@@ -246,30 +255,43 @@ sub assemble_mail
 	$received = $date->strftime('%a, %d %b %Y %H:%M:%S %z');
 
 	my $mail = MIME::Entity->build(
-		From    => $opt{from}    // ( $sender . ' <noreply@localhost>' ) ,
-		To      => $opt{to}      // (( $ENV{USER} // 'you' ) . '@localhost' ),
-		Subject => $opt{subject} // $msg->{name},
-		Data    => $opt{data}    // "Mail from $sender",
-		Date    => $opt{date}    // $received,
+		From          => $opt{from}    // ( encode('MIME-Q', $sender) . ' <noreply@localhost>' ) ,
+		To            => $opt{to}      // ( encode('MIME-Q', $self->{uname}) . ' <' . ( $ENV{USER} // 'you' ) . '@localhost>' ),
+		Subject       => $opt{subject} // encode('MIME-Header', $msg->{name}),
+		Data          => $opt{data}    // encode('utf-8', "Mail from $sender"),
+		Date          => $opt{date}    // $received,
+		Charset       => 'utf-8',
+		Encoding      => 'quoted-printable',
 		'X-Net-Eboks' => "v/$VERSION",
 	);
 
-	$mail->attach(
-		Type     => $self->mime_type($msg),
-		Encoding => 'base64',
-		Data     => $opt{body},
-		Filename => $self->filename($msg),
-	) if exists $opt{body};
+	my @attachments;
+	push @attachments, [ $msg, $opt{body} ] if exists $opt{body};
 
-	my $attachments = $self->attachments($msg);
+        my $attachments = $self->attachments($msg);
 	for my $att_id ( sort keys %$attachments ) {
-		my $att = $attachments->{$att_id};
-		$mail->attach(
-			Type     => $self->mime_type($att),
+		push @attachments, [ $attachments->{$att_id}, $opt{attachments}->{$att_id} ];
+	}
+
+	for ( @attachments ) {
+		my ( $msg, $body ) = @$_;
+		my $fn = $self->filename($msg);
+		my $entity = $mail->attach(
+			Type     => $self->mime_type($msg),
 			Encoding => 'base64',
-			Data     => $opt{attachments}->{$att_id},
-			Filename => $self->filename($att),
+			Data     => $opt{body},
+			Filename => $fn,
 		);
+
+		# XXX hack filename for utf8
+		next unless $fn =~ m/[^\x00-\x80]/;
+		$fn = Encode::encode('utf-8', $fn);
+		$fn =~ s/([^A-Za-z])/'%'.sprintf("%02x",ord($1))/ge;
+		for ( 'Content-disposition', 'Content-type') {
+			my $v = $entity->head->get($_);
+			$v =~ s/name="(.*)"/name*=.utf-8''$fn/;
+			$entity->head->replace($_, $v);
+		}
 	}
 
 	return 

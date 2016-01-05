@@ -1,5 +1,7 @@
 MANIFEST
 README
+LICENSE
+Changes
 Makefile.PL
 Eboks.pm
 bin/eboks2pop

@@ -211,7 +211,7 @@ sub pop3_stat
 	return fail("not authorized") unless $session->{authorized};
 	return lambda {
 		context want_list($session);
-		tail { shift ? ok($session->{msgs}) : remotefail($session->{error}) }
+		tail { shift() ? ok($session->{msgs}) : remotefail($session->{error}) }
 	};
 }
 
