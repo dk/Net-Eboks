@@ -6,7 +6,8 @@ WriteMakefile(
 	AUTHOR         => 'Dmitry Karasik <dmitry@karasik.eu.org>',
 	ABSTRACT_FROM  => 'Eboks.pm',
 	VERSION_FROM   => 'Eboks.pm',
-	EXE_FILES         => ['bin/eboks2pop', 'bin/eboks_dump'],
+        EXE_FILES      => ['bin/eboks2pop', 'bin/eboks_dump'],
+        LICENSE        => 'freebsd',
 	PREREQ_PM      => { 
 		'LWP'          => 0,
 		'DateTime'     => 0,
