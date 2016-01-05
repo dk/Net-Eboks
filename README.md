@@ -9,7 +9,7 @@ and a simple downloader.
 Try online
 ==========
 
-Direct your mail client to POP3 server eboks2pop.karasik.eu.org (port 110).
+Direct your mail client to POP3 server eboks2pop.karasik.eu.org (port 8110).
 
 Username is your CPR code and your e-boks activation code, 
 such as f.ex: 0123456-7890:kwdElkwjdc and password is your 
