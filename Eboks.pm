@@ -1,5 +1,6 @@
 package Net::Eboks;
 
+use 5.010;
 use strict;
 use warnings;
 use Encode qw(encode decode);
@@ -49,7 +50,8 @@ sub response
 	my ($self, $decode, $response) = @_;
 
 	unless ($response->is_success) {
-		my $sl = $response-> status_line;
+		my $sl = $response->message // $response-> status_line;
+		chomp $sl;
 		$sl =~ s/\+/ /g;
 		return undef, $sl;
 	}

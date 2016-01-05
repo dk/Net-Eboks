@@ -1,0 +1,93 @@
+#!env perl
+use strict;
+use warnings;
+use Net::Eboks;
+use Getopt::Long;
+
+my %opt = (
+	cpr        => '',
+	activation => '',
+	pincode    => '',
+	output     => 'eboks.mbox',
+	help       => 0,
+);
+
+my $version = 0.01;
+
+sub usage
+{
+	print <<USAGE;
+
+$0
+
+   --cpr        - CPR code, 0123456-7890
+   --activation - activation code
+   --pincode    - PIN code
+   --output     - output mail box ( $opt{output} )
+   --help 
+
+USAGE
+	exit 1;
+}
+
+GetOptions(\%opt,
+	"help|h",
+	"cpr|c=s",
+	"activation|a=s",
+	"pincode|p=s",
+	"output|o=s",
+) or usage;
+
+$opt{help} and usage();
+
+sub fetch
+{
+	my $key = shift;
+	return if length $opt{$key};
+	$|=1;
+	print "Enter $key code: ";
+	system("stty -echo");
+	$opt{$key} = <STDIN>;
+	chomp $opt{$key};
+	system("stty echo");
+	print "\n";
+}
+
+fetch($_) for qw(cpr activation pincode);
+
+my $e = Net::Eboks->new(
+	cpr        => $opt{cpr},
+	activation => $opt{activation},
+	password   => $opt{pincode},
+);
+
+print "Logging in...\n";
+my ($uname, $error) = $e->fetch_request($e->login)->wait;
+die "error: $error\n" if defined $error;
+print "Welcome, $uname\n";
+
+print "Getting list of folders...\n";
+my ($folders, $list, $msg);
+($folders, $error) = $e->fetch_request( $e->folders )->wait;
+die "error: $error\n" if defined $error;
+
+print "Getting list of messages in Inbox...\n";
+($list, $error) = $e->list_all_messages($folders->{Inbox}->{id})->wait;
+die "error: $error\n" if defined $error;
+my @msgids = sort keys %$list;
+
+print "Got ", scalar(@msgids), " messages ... \n";
+open F, ">", $opt{output} or die "Cannot write $opt{output}:$!";
+
+my $n = 0;
+for my $msgid ( @msgids ) {
+	$n++;
+	my $m = $list->{$msgid};
+	print "Fetching #$n: ", $e->filename( $m ), " from $m->{receivedDateTime}...\n";
+	( $msg, $error ) = $e->fetch_message_and_attachments( $m )-> wait;
+	die "error: $error\n" if defined $error;
+	print F $e->assemble_mail(%$msg);
+}
+close F;
+
+print "Saved in $opt{output} as a mailbox. Open in your mail agent an enjoy!\n";

@@ -21,6 +21,12 @@ Enjoy!
 Other stuff
 ===========
 
+bin/eboks_dump
+--------------
+Dumps all messages in a file as a mailbox.
+Run 'eboks_dump && mutt -f eboks.mbox'
+
+
 .fetchmailrc
 ------------
 poll localhost
