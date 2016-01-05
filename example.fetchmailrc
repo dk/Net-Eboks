@@ -1,0 +1,5 @@
+poll localhost
+with proto POP3                      
+user "000000-0000:wdcwdc" 
+there with password "password"        
+mda /usr/bin/procmail
