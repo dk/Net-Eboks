@@ -269,7 +269,7 @@ sub assemble_mail
 	$received = $date->strftime('%a, %d %b %Y %H:%M:%S %z');
 
 	my $mail = MIME::Entity->build(
-		From          => $opt{from}    // ( encode('MIME-Q', $sender) . ' <noreply@localhost>' ) ,
+		From          => $opt{from}    // ( encode('MIME-Q', $sender) . ' <noreply@e-boks.dk>' ) ,
 		To            => $opt{to}      // ( encode('MIME-Q', $self->{uname}) . ' <' . ( $ENV{USER} // 'you' ) . '@localhost>' ),
 		Subject       => $opt{subject} // encode('MIME-Header', $msg->{name}),
 		Data          => $opt{data}    // encode('utf-8', "Mail from $sender"),
