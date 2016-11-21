@@ -293,7 +293,7 @@ sub assemble_mail
 		my $entity = $mail->attach(
 			Type     => $self->mime_type($msg),
 			Encoding => 'base64',
-			Data     => $opt{body},
+			Data     => $body,
 			Filename => $fn,
 		);
 
