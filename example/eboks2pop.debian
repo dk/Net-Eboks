@@ -1,0 +1,57 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:             eboks2pop
+# Required-Start:       $remote_fs
+# Required-Stop:        $remote_fs
+# Should-Start:         $network
+# Should-Stop:
+# Default-Start:        2 3 4 5
+# Default-Stop:         0 1 6
+# Short-Description:    E-Boks POP3 proxy
+# Description:          Proxy daemon to connect to e-boks.dk as mail client
+#                       
+### END INIT INFO
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON_SBIN=/usr/local/bin/eboks2pop
+NAME=eboks2pop
+DESC="E-Boks POP3 proxy"
+PIDFILE=/run/eboks2pop.pid
+
+[ -x "$DAEMON_SBIN" ] || exit 0
+
+DAEMON_OPTS="-p 8110"
+
+. /lib/lsb/init-functions
+
+case "$1" in
+  start)
+        log_daemon_msg "Starting $DESC" "$NAME"
+        start-stop-daemon -c nobody:nogroup --start --oknodo --quiet --exec "$DAEMON_SBIN" \
+                --pidfile "$PIDFILE" -- $DAEMON_OPTS >/dev/null
+        log_end_msg "$?"
+        ;;
+  stop)
+        log_daemon_msg "Stopping $DESC" "$NAME"
+        start-stop-daemon --stop --oknodo --quiet --exec "$DAEMON_SBIN" \
+                --pidfile "$PIDFILE"
+        log_end_msg "$?"
+        ;;
+  restart|force-reload)
+        $0 stop
+        sleep 8
+        $0 start
+        ;;
+  status)
+        status_of_proc "$DAEMON_SBIN" "$NAME"
+        exit $?
+        ;;
+  *)
+        N=/etc/init.d/$NAME
+        echo "Usage: $N {start|stop|restart|force-reload|status}" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
