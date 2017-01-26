@@ -243,6 +243,13 @@ sub first_value
 	}
 }
 
+sub safe_encode
+{
+	my ($enc, $text) = @_;
+	utf8::downgrade($text, 'fail silently please');
+	return utf8::is_utf8($text) ? encode($enc, $text) : $text;
+}
+
 sub assemble_mail
 {
 	my ( $self, %opt ) = @_;
@@ -269,9 +276,9 @@ sub assemble_mail
 	$received = $date->strftime('%a, %d %b %Y %H:%M:%S %z');
 
 	my $mail = MIME::Entity->build(
-		From          => $opt{from}    // ( encode('MIME-Q', $sender) . ' <noreply@e-boks.dk>' ) ,
-		To            => $opt{to}      // ( encode('MIME-Q', $self->{uname}) . ' <' . ( $ENV{USER} // 'you' ) . '@localhost>' ),
-		Subject       => $opt{subject} // encode('MIME-Header', $msg->{name}),
+		From          => $opt{from}    // ( safe_encode('MIME-Q', $sender) . ' <noreply@e-boks.dk>' ) ,
+		To            => $opt{to}      // ( safe_encode('MIME-Q', $self->{uname}) . ' <' . ( $ENV{USER} // 'you' ) . '@localhost>' ),
+		Subject       => $opt{subject} // safe_encode('MIME-Header', $msg->{name}),
 		Data          => $opt{data}    // encode('utf-8', "Mail from $sender"),
 		Date          => $opt{date}    // $received,
 		Charset       => 'utf-8',
