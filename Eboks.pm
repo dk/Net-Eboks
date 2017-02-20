@@ -15,7 +15,7 @@ use IO::Lambda qw(:all);
 use IO::Lambda::HTTP qw(http_request);
 
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 sub new
 {
