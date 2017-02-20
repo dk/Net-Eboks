@@ -247,7 +247,7 @@ sub safe_encode
 {
 	my ($enc, $text) = @_;
 	utf8::downgrade($text, 'fail silently please');
-	return utf8::is_utf8($text) ? encode($enc, $text) : $text;
+	return (utf8::is_utf8($text) || $text =~ /[\x80-\xff]/) ? encode($enc, $text) : $text;
 }
 
 sub assemble_mail
