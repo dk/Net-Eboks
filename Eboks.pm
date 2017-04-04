@@ -306,11 +306,10 @@ sub assemble_mail
 
 		# XXX hack filename for utf8
 		next unless $fn =~ m/[^\x00-\x80]/;
-		$fn = Encode::encode('utf-8', $fn);
-		$fn =~ s/([^A-Za-z])/'%'.sprintf("%02x",ord($1))/ge;
+		$fn = Encode::encode('MIME-B', $fn);
 		for ( 'Content-disposition', 'Content-type') {
 			my $v = $entity->head->get($_);
-			$v =~ s/name="(.*)"/name*=.utf-8''$fn/;
+			$v =~ s/name="(.*)"/name="$fn"/;
 			$entity->head->replace($_, $v);
 		}
 	}
