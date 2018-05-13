@@ -300,7 +300,7 @@ sub assemble_mail
 		my $entity = $mail->attach(
 			Type     => $self->mime_type($msg),
 			Encoding => 'base64',
-			Data     => $body,
+			Data     => safe_encode('utf-8', $body),
 			Filename => $fn,
 		);
 
