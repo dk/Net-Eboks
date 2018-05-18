@@ -297,10 +297,11 @@ sub assemble_mail
 	for ( @attachments ) {
 		my ( $msg, $body ) = @$_;
 		my $fn = $self->filename($msg);
+		Encode::_utf8_off($body);
 		my $entity = $mail->attach(
 			Type     => $self->mime_type($msg),
 			Encoding => 'base64',
-			Data     => safe_encode('utf-8', $body),
+			Data     => $body,
 			Filename => $fn,
 		);
 
