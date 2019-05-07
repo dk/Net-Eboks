@@ -72,6 +72,7 @@ sub response
 			$content = $c;
 		};
 	}
+	no warnings; # XMLin barfs
 	my $xml = XMLin($content, ForceArray => 1, %options);
 	if ( $xml && ref($xml) eq 'HASH' ) {
 		return $xml;
@@ -389,6 +390,7 @@ sub list_all_messages
 		return ($xml, $error) unless $xml;
 
 		%ret = ( %ret, %$xml );
+		delete $ret{0}; # generates 500 server error
 		return \%ret if keys(%$xml) < $limit;
 
 		$offset += $limit;
