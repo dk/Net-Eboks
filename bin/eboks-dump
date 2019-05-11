@@ -6,7 +6,6 @@ use Getopt::Long;
 
 my %opt = (
 	cpr        => '',
-	activation => '',
 	pincode    => '',
 	output     => 'eboks.mbox',
 	help       => 0,
@@ -21,7 +20,6 @@ sub usage
 $0
 
    --cpr        - CPR code, 0123456-7890
-   --activation - activation code
    --pincode    - PIN code
    --output     - output mail box ( $opt{output} )
    --help 
@@ -33,7 +31,6 @@ USAGE
 GetOptions(\%opt,
 	"help|h",
 	"cpr|c=s",
-	"activation|a=s",
 	"pincode|p=s",
 	"output|o=s",
 ) or usage;
@@ -53,17 +50,17 @@ sub fetch
 	print "\n";
 }
 
-fetch($_) for qw(cpr activation pincode);
+fetch($_) for qw(cpr pincode);
 $opt{cpr} =~ s/\-//g;
 
 my $e = Net::Eboks->new(
 	cpr        => $opt{cpr},
-	activation => $opt{activation},
 	password   => $opt{pincode},
 );
 
+my ($uname, $error);
 print "Logging in...\n";
-my ($uname, $error) = $e->fetch_request($e->login)->wait;
+($uname, $error) = $e->fetch_request($e->login_nemid)->wait;
 die "error: $error\n" if defined $error;
 print "Welcome, $uname\n";
 

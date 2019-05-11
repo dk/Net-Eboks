@@ -1,0 +1,16 @@
+#!/bin/sh
+
+TARGET=$HOME/.eboks
+if [ ! -d $TARGET ]; then
+	mkdir $TARGET
+fi
+cd $TARGET
+openssl genrsa -out id_rsa 2048
+openssl rsa -in id_rsa -outform PEM -pubout -out id_rsa.pub
+
+echo "Keys are generated in $TARGET"
+
+DEVID=`perl -le 'printf q(%012d), int(rand(1e12))'`
+DEVID="DEADBEEF-1337-1337-1337-$DEVID"
+echo $DEVID > device_id
+echo "device ID: $DEVID"

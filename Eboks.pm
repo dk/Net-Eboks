@@ -11,11 +11,12 @@ use XML::Simple;
 use LWP::UserAgent;
 use LWP::ConnCache;
 use MIME::Entity;
+use MIME::Base64;
 use IO::Lambda qw(:all);
 use IO::Lambda::HTTP qw(http_request);
+use Crypt::OpenSSL::RSA;
 
-
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 sub new
 {
@@ -23,10 +24,8 @@ sub new
 	my $self = bless {
 		cpr        => '0000000000',
 		password   => '',
-		activation => '',
 		country    => 'DK',
 		type       => 'P',
-		deviceid   => 'DEADBEEF-1337-1337-1337-000000000000',
 		datetime   => DateTime->now->strftime('%Y-%m-%d %H:%M:%SZ'),
 		root       => 'rest.e-boks.dk',
 
@@ -36,11 +35,12 @@ sub new
 		uid        => undef,
 		uname      => undef,
 		conn_cache => LWP::ConnCache->new,
+		home       => ($ENV{HOME} // '') . '/.eboks';
 
 		%opts,
 	}, $class;
 
-	$self->{challenge} = sha256_hex(sha256_hex(join(':', @{$self}{qw(activation deviceid type cpr country password datetime)})));
+	$self->{deviceid} //= $self->load('device_id', 1);
 
 	return $self;
 }
@@ -72,7 +72,6 @@ sub response
 			$content = $c;
 		};
 	}
-	no warnings; # XMLin barfs
 	my $xml = XMLin($content, ForceArray => 1, %options);
 	if ( $xml && ref($xml) eq 'HASH' ) {
 		return $xml;
@@ -87,10 +86,14 @@ sub login
 
 	return undef if defined $self->{uid};
 
+	local $self->{challenge} = sha256_hex(sha256_hex(join(':', EBOKS => @{$self}{
+		qw(deviceid type cpr country password datetime)})));
 	my $authstr = 'logon ' . join(',', map { "$_=\"$self->{$_}\"" } qw(deviceid datetime challenge));
 	my $content = <<XML;
-<Logon xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="urn:eboks:mobile:1.0.0">
-<User identity="$self->{cpr}" identityType="$self->{type}" nationality="$self->{country}" pincode="$self->{password}"/>
+<Logon xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="urn:eboks:mobile:1.0.0">
+<User identity="$self->{cpr}" identityType="$self->{type}"
+nationality="$self->{country}" pincode="$self->{password}"/>
 </Logon>
 XML
 
@@ -119,6 +122,105 @@ XML
 		$self->{uname} = $xml->{User}->{name};
 		return $self->{uname};
 	};
+}
+
+sub login_nemid
+{
+	my $self = shift;
+
+	return undef if defined $self->{uid};
+	my $pk = Crypt::OpenSSL::RSA->new_private_key($self->load('id_rsa'));
+	local $self->{challenge} = join(':', q(EBOKS), @{$self}{qw(deviceid type cpr country password datetime)});
+	$self->{challenge} = encode_base64($pk->sign($self->{challenge}));
+
+	my $authstr = 'logon ' . join(',', map { "$_=\"$self->{$_}\"" } qw(deviceid datetime challenge));
+	my $content = <<XML;
+<Logon xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="urn:eboks:mobile:1.0.0">
+<App version="$VERSION" os="$^O" osVersion="1" Device="pc"/>
+<User identity="$self->{cpr}" identityType="$self->{type}"
+nationality="$self->{country}" pincode="$self->{password}"/>
+</Logon>
+XML
+
+	my $login = HTTP::Request->new(
+		'PUT',
+		'https://' . $self->{root} . '/mobile/1/xml.svc/en-gb/session',
+		[
+			'Content-Type'         => 'application/xml',
+			'Content-Length'       => length($content),
+			'X-EBOKS-AUTHENTICATE' => $authstr,
+			'Accept'               => '*/*',
+			'Accept-Language'      => 'en-US',
+			'Accept-Encoding'      => 'gzip,deflate',
+			'Host'                 => $self->{root},
+		],
+		$content
+	);
+	$login->protocol('HTTP/1.1');
+
+	return $login, sub { 
+		my ($xml, $error) = $self-> response({ForceArray => 0}, @_);
+		return $xml, $error unless $xml;
+		return undef, "'User' is not present in response" unless exists $xml->{User};
+
+		$self->{uid}   = $xml->{User}->{userId};
+		$self->{uname} = $xml->{User}->{name};
+		return $self->{uname};
+	};
+}
+
+sub load
+{
+	my ( $self, $file, $crunch ) = @_;
+
+	my $path = "$self->{home}/$file";
+	open my $f, "<", $path or die "Cannot read $path:$!. Did you run eboks-keygen?\n";
+	my $ctx = '';
+	while (<$f>) {
+		if ( $crunch ) {
+			chomp;
+			next if m/^--/;
+		}
+		$ctx .= $_;
+	}
+	close $f;
+
+	return $ctx;
+}
+
+sub session_activate
+{
+	my ($self, $ticket) = @_;
+
+	my $pubkey = $self->load('id_rsa.pub', 1);
+
+	my $authstr = join(',', map { "$_=\"$self->{$_}\"" } qw(deviceid nonce sessionid response));
+	my $content = <<XML;
+<?xml version="1.0" encoding="utf-8"?>
+<Activation xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" deviceId="$self->{deviceid}"
+deviceName="pc" deviceOs="ubuntu" key="$pubkey" ticket="$ticket"
+ticketType="KspWeb" xmlns="urn:eboks:mobile:1.0.0" />
+XML
+
+	my $login = HTTP::Request->new(
+		'PUT',
+		'https://' . $self->{root} . "/mobile/1/xml.svc/en-gb/$self->{uid}/0/session/activate",
+		[
+			'Content-Type'         => 'application/xml',
+			'Content-Length'       => length($content),
+			'X-EBOKS-AUTHENTICATE' => $authstr,
+			'Accept'               => '*/*',
+			'Accept-Language'      => 'en-US',
+			'Accept-Encoding'      => 'gzip,deflate',
+			'Host'                 => $self->{root},
+		],
+		$content
+	);
+	$login->protocol('HTTP/1.1');
+
+	return $login, sub { $self-> response(0, @_) };
 }
 
 sub ua { LWP::UserAgent->new(conn_cache => shift->{conn_cache}) }
@@ -390,7 +492,7 @@ sub list_all_messages
 		return ($xml, $error) unless $xml;
 
 		%ret = ( %ret, %$xml );
-		delete $ret{0}; # generates 500 server error
+		#delete $ret{0}; # generates 500 server error
 		return \%ret if keys(%$xml) < $limit;
 
 		$offset += $limit;
