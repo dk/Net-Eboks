@@ -107,7 +107,7 @@ $serv->wait;
 $window->close;
 die "Aborted\n" unless defined $ticket;
 
-print "Activating device $e->{device_id}..\n";
+print "Activating device $e->{deviceid}..\n";
 ( undef, $error) = $e->fetch_request($e->session_activate($ticket))->wait;
 die $error if defined $error;
 
