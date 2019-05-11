@@ -11,6 +11,7 @@ use Net::Eboks;
 my %opt = (
 	port  => 110,
 	addr  => '0.0.0.0',
+	keys  => ($ENV{HOME} // '') . "/.eboks",
 	debug => 0,
 	help  => 0,
 );
@@ -25,6 +26,7 @@ $0
 
    --port      - listen on port, 110 by default
    --addr      - listen on address, 0.0.0.0 by default
+   --keys      - location of rsa keys, $opt{keys} by default
    --debug     - debug on stderr
    --help 
 
@@ -35,6 +37,7 @@ USAGE
 GetOptions(\%opt,
 	"port|p=i",
 	"addr|a=s",
+	"keys|k=s",
 	"debug",
 	"help|h",
 ) or usage;
@@ -192,10 +195,11 @@ sub pop3_pass
 	$session->{obj}  = Net::Eboks->new(
 		cpr        => $session->{user},
 		password   => $session->{pass},
+		home       => $opt{keys},
 	);
 	return lambda {
 		debug("[$session->{hostname}] login");
-		context $session->{obj}->fetch_request($session->{obj}->login);
+		context $session->{obj}->fetch_request($session->{obj}->login_nemid);
 	tail {
 		my ( $uname, $error ) = @_;
 		debug("[$session->{hostname}] $error") if $error;

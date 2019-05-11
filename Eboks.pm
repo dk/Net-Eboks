@@ -35,7 +35,7 @@ sub new
 		uid        => undef,
 		uname      => undef,
 		conn_cache => LWP::ConnCache->new,
-		home       => ($ENV{HOME} // '') . '/.eboks';
+		home       => ($ENV{HOME} // '') . '/.eboks',
 
 		%opts,
 	}, $class;
