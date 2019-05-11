@@ -6,6 +6,7 @@ use Gtk3::WebKit;
 use IO::Socket;
 use HTTP::Request;
 use HTTP::Response;
+use Net::Eboks;
 use IO::Socket::INET;
 use IO::Lambda qw(:all);
 use IO::Lambda::Socket qw(:all);
@@ -84,7 +85,6 @@ my $serv = lambda {
 };
 
 my ($url) = 'https://m.e-boks.dk/app/logon.aspx?logontype=nemid';
-$url = 'http://karasik.eu.org/misc/a.html';
  
 my $window = Gtk3::Window->new('toplevel');
 $window->set_default_size(600, 600);
@@ -93,9 +93,9 @@ $window->signal_connect(destroy => sub { $serv->terminate });
 my $view = Gtk3::WebKit::WebView->new();
 $view->signal_connect('resource-request-starting' => sub {
 	my $req = $_[3];
-	#if ($req->get_uri eq 'https://m.e-boks.dk/app/logon.aspx') {
+	if ($req->get_uri eq 'https://m.e-boks.dk/app/logon.aspx') {
 		$req->set_uri("http://localhost:$port/");
-	#}
+	}
 });
 $view->load_uri($url);
  
@@ -105,5 +105,10 @@ $window->add($scrolls);
 $window->show_all();
 $serv->wait;
 $window->close;
- 
-$e->fetch_request($e->session_activate($ticket))->wait;
+die "Aborted\n" unless defined $ticket;
+
+print "Activating device $e->{device_id}..\n";
+( undef, $error) = $e->fetch_request($e->session_activate($ticket))->wait;
+die $error if defined $error;
+
+print "all okay\n";
