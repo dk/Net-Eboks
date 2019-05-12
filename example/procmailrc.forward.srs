@@ -1,0 +1,13 @@
+# change header
+:0fhw
+| formail -i "From: myself@mydomain.org"
+
+:0
+* ^X-Net-Eboks:.*
+* To: My Name .*
+! me@email.com
+
+:0
+* ^X-Net-Eboks:.*
+* To: My Wife .*
+! my-wife@email.com

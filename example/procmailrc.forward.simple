@@ -1,0 +1,9 @@
+:0
+* ^X-Net-Eboks:.*
+* To: My Name .*
+! me@email.com
+
+:0
+* ^X-Net-Eboks:.*
+* To: My Wife .*
+! my-wife@email.com

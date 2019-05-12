@@ -64,7 +64,7 @@ email clients to read my mail.
 1) Create a startup script, f.ex. for FreeBSD see `example/eboks2pop.freebsd`,
 and for Debian/Ubuntu see `examples/eboks2pop.debian`
 
-2) Install *procmail* and *fetchmail*. Look into `example/procmail` and
+2) Install *procmail* and *fetchmail*. Look into `example/procmailrc`.local` and
 and `examples/fetchmail` (the latter needs to have permissions 0600). 
 
 3) Add a cron job f.ex.
@@ -78,15 +78,11 @@ Automated forwarding
 --------------------
 
 You might want just to forward your eBoks messages to your mail address.  The
-setup is basically same as in previous section but don't use
+setup is basically same as in previous section, but see
+`examples/procmailrc.forward.simple` instead.
 
-`mda "/usr/bin/procmail -f-"`
-
-in `.fetchmailrc`, but enter your email in `.forward` file, or use some other
-forwarding mechanism.
-
-I didn't go far in this direction but it's surely possible, fetchmail + forward
-is a very standard set of tools used for forwarding mails since early days of
-unix.  Please contact me if you have some a good documentation to include here.
+The problem you might encounter is that the module generates mails as
+originated from `noreply@e-boks.dk` and f.ex. Gmail won't accept that due to
+DMARC. See if rewriting the sender as in `examples/procmail.forward.srs` helps.
 
 Enjoy!
