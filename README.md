@@ -28,8 +28,8 @@ server (see below why).
 3) For each user, you will need to go through one-time registration through you
 personal NemID signature. Run `eboks-authenticate` that will ask your CPR,
 password, and will try to show a standard NemID window, that you will need to
-log in, and then confirm that indeed you allow the login by eBoks. If that
-works, the script will send that to the eBoks so it recognized your future
+log in, and then confirm that indeed you to allow the login to eBoks. If that
+works, the script will send that to the eBoks server so it recognizes your future
 logins.
 
 This step should be done one time only, for each user, not for each
@@ -39,11 +39,16 @@ to add more users.
 Download your mails as a mailbox
 --------------------------------
 
+Note: You probably don't need it, this script is mostly for testing that the access works.
+
 On command line, type `eboks-dump`, enter your passwords, and wait until it downloads
 all into eboks.mbox. Use your favourite mail agent to read it.
 
 Use eboks.dk as a POP3 server
 -----------------------------
+
+You may want this setup if you don't have a dedicated server, and run
+everything on a single desktop.
 
 1) On command line, type `eboks2pop`
 
@@ -52,6 +57,9 @@ your CPR code such as f.ex: 0123456-7890 and password is your mobile pincode.
 
 Use on mail server
 ------------------
+
+This is the setup I use on my own remote server, where I connect to using
+email clients to read my mail.
 
 1) Create a startup script, f.ex. for FreeBSD see `example/eboks2pop.freebsd`,
 and for Debian/Ubuntu see `examples/eboks2pop.debian`
@@ -65,5 +73,20 @@ and `examples/fetchmail` (the latter needs to have permissions 0600).
 
 to fetch mails once a day. Only new mails will be fetched. This will also work for 
 more than one user.
+
+Automated forwarding
+--------------------
+
+You might want just to forward your eBoks messages to your mail address.  The
+setup is basically same as in previous section but don't use
+
+`mda "/usr/bin/procmail -f-"`
+
+in `.fetchmailrc`, but enter your email in `.forward` file, or use some other
+forwarding mechanism.
+
+I didn't go far in this direction but it's surely possible, fetchmail + forward
+is a very standard set of tools used for forwarding mails since early days of
+unix.  Please contact me if you have some a good documentation to include here.
 
 Enjoy!
