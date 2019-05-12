@@ -36,6 +36,15 @@ This step should be done one time only, for each user, not for each
 installation.  So it is optional unless you're running it first time or intend
 to add more users.
 
+Security note: The module's NemID login runs on gtk's own web browser widget,
+which is not really different from a real browser. It uses https and all other
+means for the secure communications exactly as all other web-based NemID
+clients. There are no concerns others than the usual suspects when one uses
+NemID logins by other means. To be extra paranoid though, use only two-factor
+authentication through NemID app, not through one-time pads, as the app shows
+who is the issuer of the login request when asking for its confirmation.
+Make sure the requestor is eBoks, not your bank :)
+
 Download your mails as a mailbox
 --------------------------------
 
