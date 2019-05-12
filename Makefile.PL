@@ -18,6 +18,8 @@ WriteMakefile(
 		'Getopt::Long' => 0,
 		'Digest::SHA'  => 0,
 		'Crypt::OpenSSL::RSA' => 0,
+		((( $ARGV[0] // '') eq 'nogtk' or $ENV{AUTOMATED_TESTING}) 
+			? () : ('Gtk3::WebKit' => 0)),
 	},
 	MIN_PERL_VERSION  => 5.010,
 	META_MERGE     => {

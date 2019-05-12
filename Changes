@@ -1,14 +1,17 @@
-0.05
-- update for perl 5.24
+0.06  - 12 May 2019
+	support nemid login	
 
-0.04
-- bug fix with multiple attachments
+0.05  - 
+	update for perl 5.24
 
-0.03
-- tighten security in examples
+0.04  - 
+	bug fix with multiple attachments
 
-0.02
-- proper unicode handling
+0.03  -
+	tighten security in examples
 
-0.01
-- initial
+0.02  -
+	proper unicode handling
+
+0.01  -
+	initial

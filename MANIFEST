@@ -7,7 +7,6 @@ Eboks.pm
 bin/eboks2pop
 bin/eboks-dump
 bin/eboks-authenticate
-bin/eboks-keygen
 t/01.t
 example/fetchmailrc
 example/procmailrc

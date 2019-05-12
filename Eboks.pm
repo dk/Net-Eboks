@@ -28,6 +28,7 @@ sub new
 		type       => 'P',
 		datetime   => DateTime->now->strftime('%Y-%m-%d %H:%M:%SZ'),
 		root       => 'rest.e-boks.dk',
+		deviceid   => 'DEADBEEF-1337-1337-1337-900000000002',
 
 		nonce      => '',
 		sessionid  => '',
@@ -35,12 +36,9 @@ sub new
 		uid        => undef,
 		uname      => undef,
 		conn_cache => LWP::ConnCache->new,
-		home       => ($ENV{HOME} // '') . '/.eboks',
 
 		%opts,
 	}, $class;
-
-	$self->{deviceid} //= $self->load('device_id', 1);
 
 	return $self;
 }
@@ -129,7 +127,37 @@ sub login_nemid
 	my $self = shift;
 
 	return undef if defined $self->{uid};
-	my $pk = Crypt::OpenSSL::RSA->new_private_key($self->load('id_rsa'));
+
+	# openssl genrsa -out id_rsa 2048
+	my $pk = Crypt::OpenSSL::RSA->new_private_key(<<'PVT');
+-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEA2VUahnbWKIY4rn8jEthY9M2BoMIHoNQlY4YUL9pV+MpSKyy9
+MjVKV6h8ERnj+1wxUJDR3ZJimYnvcruGqlSR+uhL8MJs7GqSSOL3zKbZiHmip1/j
+/9Wzsu86VJibxd14/5r8OugIJDs+aeE6fxpKW1BtUiiUAvlbC4MwnAnCPemzl7gG
+qi64xsSaVdoi0NzZpxI+ItP9x89eMw64F5GlIviGJ9hODyW3ckKSvgxEQGf7x9TN
+toVt1Gxh4jdokalHmgNQy4zaqnzGLstl227HIEfbbzX/rK30FFVurFG0JAE9T7z7
+b0S5RkGFx4GgKGRoFRd8HE+UptBa4JyvmvA3MQIDAQABAoIBAQCtEkbDWhOFxg2R
+eJGXyk5c9OMMADhO7WKw9O9ShE7+hzAUTdaFC0ces3/JppKVc3+aJxnZl1+J4fyb
+o5bEQgDWjPMc0dgoFV5VSNoJUb3eHu9W1tgcvjQShMww3i7+zTY0Z1oCFxGUuNEl
+REVvPqKEQXItgT8Nd0H30wt815Cl9+RlaXMmNRq6aCB0GSUHpVGmgasiUejk7Zej
+rp23LarcmZitiQXGt0yCbW35/6553Ph88W4cgfav6y+LKTxK06UkKh/QRJaCoKLV
+BXVmb5HCZv5waU5eRaxV/TKTATDU45DuU3f76+OlQp0P/cH4EVXhC+95fLJ1XUxG
+lSIQW+MhAoGBAO7N0o5llwbgNpxzZ6z4mRni3LUFpURozNT3q616qM7QGBRfDeHI
+o1cZf8wRWmMBdA16iWT7xMTpRfHcHt8NW+XlzisQG5KOlrUh1ZtRrltFGPnxUd84
+EgbUK+ArzU4mqZZMETZBmrJqVO1lB0dhrjqZ9SDUeXimNqZCoGHU/Z9VAoGBAOj7
+d/bhp4OtRKBDgKF1IThikgnsZAcBfGCXaASrPFAbi1p4MNEHUNkQXG7V/PSxMlUf
+y3U35Hsxexpq2Al98gw/TUBdgb/WfDJHole1fbXTd/Gh9H8RdMLSnOdLTCMXvW9r
+e1DKt8/5fb87BE8xQUc9sXJ5mmx522WqEyOXZeBtAoGAbIUQCDHWXgOKDbLMDGi0
+enUDwyeboOjXHHiohZ9WExWxu6AumMoqoCwwTTYdkxxX9sAWq9NV6f3wESbsyIQz
+nNe/xwX84a72gb2sanbF+yf9X6fwgrXiS0Qj5C1DkR40tt4+fB94A1ga2/6rPh7/
+pBXOtWqZAODXuNpSM+MsljkCgYBWV9u9wyMxyaUFP/8L1zzYiK9WviTT89kEcxg5
+orxXc93RSXnN/cgYqdeXu/ZjOMhOg9oDNxOWFGBrCe3GlsZ9g3g9wmmzjum4OJQR
+rVFJcXWiN0NFVFLRYPyFO4Kb/tBV2p948afti6julhCiyL5IiLSamDaCvSZyJvWw
+2wsGgQKBgQCt6ityOP56Co60pUnhonmNLg98IvWnREn8xoGdjtrMuk+Ksf5sUX5i
+fcogYnJ4ciLmJ37cVXfOtrRrDsjqSbHY07Oqb0qdIKPATJkiK0ltXG4hSvjB2LPU
+XC53Clpk+n6+ltUJnUAFtl8g4jcUG9Bs+334WiX0n7Hx7yQlsvzBtA==
+-----END RSA PRIVATE KEY-----
+PVT
 	local $self->{challenge} = join(':', q(EBOKS), @{$self}{qw(deviceid type cpr country password datetime)});
 	$self->{challenge} = encode_base64($pk->sign($self->{challenge}));
 
@@ -170,37 +198,29 @@ XML
 	};
 }
 
-sub load
-{
-	my ( $self, $file, $crunch ) = @_;
-
-	my $path = "$self->{home}/$file";
-	open my $f, "<", $path or die "Cannot read $path:$!. Did you run eboks-keygen?\n";
-	my $ctx = '';
-	while (<$f>) {
-		if ( $crunch ) {
-			chomp;
-			next if m/^--/;
-		}
-		$ctx .= $_;
-	}
-	close $f;
-
-	return $ctx;
-}
-
 sub session_activate
 {
 	my ($self, $ticket) = @_;
 
-	my $pubkey = $self->load('id_rsa.pub', 1);
+# 	openssl rsa -in id_rsa -outform PEM -pubout -out id_rsa.pub
+	my $pubkey = join '', grep {!/^--/} split /\n/, <<'PUB';
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2VUahnbWKIY4rn8jEthY
+9M2BoMIHoNQlY4YUL9pV+MpSKyy9MjVKV6h8ERnj+1wxUJDR3ZJimYnvcruGqlSR
++uhL8MJs7GqSSOL3zKbZiHmip1/j/9Wzsu86VJibxd14/5r8OugIJDs+aeE6fxpK
+W1BtUiiUAvlbC4MwnAnCPemzl7gGqi64xsSaVdoi0NzZpxI+ItP9x89eMw64F5Gl
+IviGJ9hODyW3ckKSvgxEQGf7x9TNtoVt1Gxh4jdokalHmgNQy4zaqnzGLstl227H
+IEfbbzX/rK30FFVurFG0JAE9T7z7b0S5RkGFx4GgKGRoFRd8HE+UptBa4JyvmvA3
+MQIDAQAB
+-----END PUBLIC KEY-----
+PUB
 
 	my $authstr = join(',', map { "$_=\"$self->{$_}\"" } qw(deviceid nonce sessionid response));
 	my $content = <<XML;
 <?xml version="1.0" encoding="utf-8"?>
 <Activation xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 xmlns:xsd="http://www.w3.org/2001/XMLSchema" deviceId="$self->{deviceid}"
-deviceName="pc" deviceOs="ubuntu" key="$pubkey" ticket="$ticket"
+deviceName="pc" deviceOs="$^O" key="$pubkey" ticket="$ticket"
 ticketType="KspWeb" xmlns="urn:eboks:mobile:1.0.0" />
 XML
 
