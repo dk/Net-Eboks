@@ -64,7 +64,7 @@ email clients to read my mail.
 1) Create a startup script, f.ex. for FreeBSD see `example/eboks2pop.freebsd`,
 and for Debian/Ubuntu see `examples/eboks2pop.debian`
 
-2) Install *procmail* and *fetchmail*. Look into `example/procmailrc`.local` and
+2) Install *procmail* and *fetchmail*. Look into `example/procmailrc.local` and
 and `examples/fetchmail` (the latter needs to have permissions 0600). 
 
 3) Add a cron job f.ex.
