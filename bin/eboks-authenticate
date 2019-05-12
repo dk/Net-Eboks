@@ -16,13 +16,10 @@ my %opt;
 sub fetch
 {
 	my $key = shift;
-	return if length $opt{$key};
 	$|=1;
 	print "Enter $key code: ";
-	system("stty -echo");
 	$opt{$key} = <STDIN>;
 	chomp $opt{$key};
-	system("stty echo");
 	print "\n";
 }
 
