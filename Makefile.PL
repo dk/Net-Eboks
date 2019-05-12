@@ -1,6 +1,28 @@
 use strict;
 use warnings;
+use Getopt::Long  qw(GetOptions);
 use ExtUtils::MakeMaker;
+
+my $with_gtk;
+
+GetOptions(
+	'with-gtk!' => \$with_gtk,
+);
+
+unless ( defined $with_gtk ) {
+	print <<EOT;
+	
+For this module to be useful, you need to go through one-time registration
+with NemID for each user. This requires gtk3 modules to be installed.
+If you already registered or you don't intend to to so, for example for
+server use only, then you don't need those.
+	
+EOT
+	$with_gtk = prompt(
+		"Do you want to install Gtk3 modules for NemID authentication?", "n"
+	) =~ /^y/i ? 1 : 0;
+}
+
 WriteMakefile(
 	NAME           => 'Net::Eboks',
 	AUTHOR         => 'Dmitry Karasik <dmitry@karasik.eu.org>',
@@ -18,8 +40,7 @@ WriteMakefile(
 		'Getopt::Long' => 0,
 		'Digest::SHA'  => 0,
 		'Crypt::OpenSSL::RSA' => 0,
-		((( $ARGV[0] // '') eq 'nogtk' or $ENV{AUTOMATED_TESTING}) 
-			? () : ('Gtk3::WebKit' => 0)),
+		($with_gtk ? ('Gtk3::WebKit' => 0) : ()),
 	},
 	MIN_PERL_VERSION  => 5.010,
 	META_MERGE     => {
