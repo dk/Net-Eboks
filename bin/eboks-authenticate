@@ -75,7 +75,6 @@ my $serv = lambda {
 		die $error if defined $error;
 		warn "No ticket in response" unless $buf =~ /Ticket=(.*?)(&|$)/;
 		$ticket = $1;
-		$ticket = 'tickit';
 		print "got entry ticket\n";
 
 		my $resp = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
