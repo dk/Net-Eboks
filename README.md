@@ -47,7 +47,7 @@ all into eboks.mbox. Use your favourite mail agent to read it.
 Use eboks.dk as a POP3 server
 -----------------------------
 
-You may want this setup if you don't have a dedicated server, and don't want
+You may want this setup if you don't have a dedicated server, or don't want
 to spam your mail by eBoks. You can run everything on a single desktop.
 
 1) On command line, type `eboks2pop`
