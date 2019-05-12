@@ -18,15 +18,15 @@ The password is your mobile pincode.
 Prerequisites
 -------------
 
-1) You will need perl.  For windows you'll need either strawberry perl from
+1) You will need *perl*.  For windows you'll need either strawberry perl from
 http://strawberryperl.com/ or cygwin's perl.
 
-2) Install this module by opening command line and typing 'cpan Net::Eboks'.
+2) Install this module by opening command line and typing `cpan Net::Eboks`.
 It will ask you if you want gtk3 modules. Short answer: yes for desktop, no for
 server (see below why).
 
 3) For each user, you will need to go through one-time registration through you
-personal NemID signature. Run eboks-authenticate that will ask your CPR,
+personal NemID signature. Run `eboks-authenticate` that will ask your CPR,
 password, and will try to show a standard NemID window, that you will need to
 log in, and then confirm that indeed you allow the login by eBoks. If that
 works, the script will send that to the eBoks so it recognized your future
@@ -39,13 +39,13 @@ to add more users.
 Download your mails as a mailbox
 --------------------------------
 
-On command line, type eboks-dump, enter your passwords, and wait until it downloads
+On command line, type `eboks-dump`, enter your passwords, and wait until it downloads
 all into eboks.mbox. Use your favourite mail agent to read it.
 
 Use eboks.dk as a POP3 server
 -----------------------------
 
-1) On command line, type eboks2pop
+1) On command line, type `eboks2pop`
 
 2) Connect your mail client to POP3 server at localhost, where username is
 your CPR code such as f.ex: 0123456-7890 and password is your mobile pincode.
@@ -53,15 +53,15 @@ your CPR code such as f.ex: 0123456-7890 and password is your mobile pincode.
 Use on mail server
 ------------------
 
-1) Create a startup script, f.ex. for FreeBSD see example/eboks2pop.freebsd,
-and for Debian/Ubuntu see examples/eboks2pop.debian
+1) Create a startup script, f.ex. for FreeBSD see `example/eboks2pop.freebsd`,
+and for Debian/Ubuntu see `examples/eboks2pop.debian`
 
-2) Install procmail and fetchmail. Look into example/procmail and
-and examples/fetchmail (the latter needs to have permissions 0600). 
+2) Install *procmail* and *fetchmail*. Look into `example/procmail` and
+and `examples/fetchmail` (the latter needs to have permissions 0600). 
 
 3) Add a cron job f.ex.
 
-  2       2       *       *       *       /usr/local/bin/fetchmail > /dev/null 2>&1
+`  2       2       *       *       *       /usr/local/bin/fetchmail > /dev/null 2>&1`
 
 to fetch mails once a day. Only new mails will be fetched. This will also work for 
 more than one user.
