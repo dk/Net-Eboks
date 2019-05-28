@@ -27,7 +27,7 @@ server (see below why).
 
 3) For each user, you will need to go through one-time registration through you
 personal NemID signature. Run `eboks-authenticate` that will ask your CPR,
-password, and will try to show a standard NemID window, that you will need to
+your NemID password, and will try to show a standard NemID window, that you will need to
 log in, and then confirm that indeed you to allow the login to eBoks. If that
 works, the script will send that to the eBoks server so it recognizes your future
 logins.
