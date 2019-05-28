@@ -165,7 +165,7 @@ PVT
 	my $content = <<XML;
 <Logon xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="urn:eboks:mobile:1.0.0">
-<App version="$VERSION" os="$^O" osVersion="1" Device="pc"/>
+<App version="$VERSION" os="$^O" osVersion="1" Device="Net-Eboks"/>
 <User identity="$self->{cpr}" identityType="$self->{type}"
 nationality="$self->{country}" pincode="$self->{password}"/>
 </Logon>
@@ -220,7 +220,7 @@ PUB
 <?xml version="1.0" encoding="utf-8"?>
 <Activation xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 xmlns:xsd="http://www.w3.org/2001/XMLSchema" deviceId="$self->{deviceid}"
-deviceName="pc" deviceOs="$^O" key="$pubkey" ticket="$ticket"
+deviceName="Net-Eboks" deviceOs="$^O" key="$pubkey" ticket="$ticket"
 ticketType="KspWeb" xmlns="urn:eboks:mobile:1.0.0" />
 XML
 
