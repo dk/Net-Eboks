@@ -39,6 +39,7 @@ WriteMakefile(
 		'XML::Simple'  => 0,
 		'Getopt::Long' => 0,
 		'Digest::SHA'  => 0,
+		'IO::Socket::SSL' => 0,
 		'Crypt::OpenSSL::RSA' => 0,
 		($with_gtk ? ('Gtk3::WebKit' => 0) : ()),
 	},
