@@ -55,7 +55,7 @@ Otherwise, try pre-packaged solutions first, f.ex: `sudo apt-get install
 libgtk3-perl gir1.2-webkit-3.0` on Ubuntu/Debian
 
 Note that having Gtk3::WebKit is not enough, it needs its gireporistory (as
-f.ex. gir1.2-webkit-3.0) installed too.
+f.ex. `gir1.2-webkit-3.0`) installed too.
 
 * Run `eboks-authenticate`, it will start NemID auth process (see above)
 
@@ -63,7 +63,7 @@ Installation for Windows
 ------------------------
 
 * Install cygwin environment:
-	- Go to `https://cygwin.org/install.html` and download `https://cygwin.com/setup-x86_64.exe`.
+	- Go to [cygwin website](https://cygwin.org/install.html) and download installer [setup-x86\_64.exe](https://cygwin.com/setup-x86_64.exe).
 	- Run it, select a mirror and an install folder
 	- In the package view, select 'Not installed' dropdown.
 	- Install packages (see below) by searching for its name, then clicking on 'Skip' dropdown, and selecting a latest version
