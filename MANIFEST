@@ -9,6 +9,8 @@ bin/eboks-dump
 bin/eboks-authenticate
 t/01.t
 example/fetchmailrc
-example/procmailrc
+example/procmailrc.forward.simple
+example/procmailrc.forward.srs
+example/procmailrc.local
 example/eboks2pop.debian
 example/eboks2pop.freebsd
