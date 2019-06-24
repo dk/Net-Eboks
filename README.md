@@ -67,7 +67,7 @@ Installation for Windows
 	- Run it, select a mirror and an install folder
 	- In the package view, select 'Not installed' dropdown.
 	- Install packages (see below) by searching for its name, then clicking on 'Skip' dropdown, and selecting a latest version
-* Select the following packages, then click `Next` and let it run:
+* Select the packages below, then click `Next` and let it run:
 	- dbus
 	- girepository-WebKit3.0
 	- make
@@ -84,7 +84,7 @@ Installation for Windows
 	- xorg-server
 * Close the installer. Install other modules not provided by cygwin:
 	- Enter cygwin command line by running `cygwin.bat` from the `C:/Cygwin64` or where you have it installed.
-	- From there, run `cpan`. Let it configure itself, press Enter if it asks questions.
+	- Type `cpan`. Let it configure itself, press Enter if it asks questions.
 	- Type `force install Gtk3::WebKit`
 	- Type `install Net::Eboks`. Press Enter on all questions
 	- Type `exit`
