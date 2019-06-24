@@ -50,8 +50,8 @@ It will ask you if you want gtk3 modules. Short answer: yes for desktop, no for
 server (see above why).
 
 If the automatic installation doesn't work properly, install GTK3 manually.
-First try the easiset path: `cpan Gtk3::WebKit`. If that works, that's just it.
-Otherwise, try pre-packaged solutions first, f.ex: `apt-get install
+First try the easiset path: `sudo cpan Gtk3::WebKit`. If that works, that's just it.
+Otherwise, try pre-packaged solutions first, f.ex: `sudo apt-get install
 libgtk3-perl gir1.2-webkit-3.0` on Ubuntu/Debian
 
 Note that having Gtk3::WebKit is not enough, it needs its gireporistory (as
