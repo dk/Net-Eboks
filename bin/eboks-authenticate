@@ -1,110 +1,114 @@
 #!perl
 use strict;
 use warnings;
-use Gtk3 -init;
-use Gtk3::WebKit;
-use IO::Socket;
+use Net::Eboks;
+use IO::Lambda qw(:all);
+use IO::Lambda::HTTP::Client qw(http_request);
+use IO::Lambda::HTTP::Server;
+use URI;
+use URI::QueryParam;
 use HTTP::Request;
 use HTTP::Response;
-use Net::Eboks;
-use IO::Socket::INET;
-use IO::Lambda qw(:all);
-use IO::Lambda::Socket qw(:all);
-use IO::Lambda::Loop::Glib;
 
-my %opt;
-sub fetch
+my $e;
+my $port = 9999;
+
+my $ticket;
+my $server;
+
+sub html($)
 {
-	my $key = shift;
-	$|=1;
-	print "Enter $key code: ";
-	$opt{$key} = <STDIN>;
-	chomp $opt{$key};
-	print "\n";
+	my $html = $_[0];
+	$html = "<html><body>$html</body></html>";
+	HTTP::Response->new( 200, "OK", [
+		'Content-Type'   => 'text/html',
+		'Content-Length' => length($html),
+	], $html)
 }
 
-fetch($_) for qw(cpr pincode);
-$opt{cpr} =~ s/\-//g;
-my $e = Net::Eboks->new(
-	cpr        => $opt{cpr},
-	password   => $opt{pincode},
+my %routes = (
+	'/' => sub { html <<'INIT'
+<h2>Welcome to the Eboks/Nemid authenticator</h2>
+<p>
+This step is needed to bind a device, usually a mobile phone, to
+Eboks.<br> You can see a list of those devices in your E-boks personal page.<br>
+Here we register a fake device "Net-Eboks" that establishes access for
+the module.
+<p>
+First, you will need to provide your CPR and mobile login:
+<form action="/step1" method="POST">
+<table><tr>
+<td>CPR:</td><td><input name="cpr"></td></tr><tr>
+<td>Mobile login:</td><td><input type="password" name="login"></td></tr>
+</table><p>
+<input type="submit" value="Next">
+</form>
+INIT
+	},
+
+	'/step1' => sub {
+		my $req = shift;
+		return (undef, "bad response") unless 
+			$req->method eq 'POST' and
+			$req->header('Content-Type') eq 'application/x-www-form-urlencoded';
+		my $uri = URI->new;
+		$uri->query($req->content);
+		$e = Net::Eboks->new(
+			cpr        => $uri->query_param('cpr') // '',
+			password   => $uri->query_param('login') // ''
+		);
+		my ($uname, $error) = $e->fetch_request($e->login)->wait;
+		return (undef, "Error logging to E-Boks:$error") if defined $error;
+		return html <<SUCCESS;
+<h2>Welcome, $uname!</h2>
+<p>
+The login to E-Boks was successful.<br>
+Now, it requires you to perform a NemID login, to get a confirmation
+that the device is, indeed yours.<br> On the next page you will be presented
+the standard NemID dialog, that you need to login as you usually do.<br>
+If you are going to authorize the login with your NemID app, make sure that
+the requestor is "E-Boks login".
+<form action="/logon" method="POST">
+<input type="submit" value="Next">
+</form>
+SUCCESS
+	},
+
+	'/logon' => sub {
+		my $req = shift;
+		return IO::Lambda::HTTP::Client->new( HTTP::Request->new(
+			'GET',
+			'https://m.e-boks.dk/app/logon.aspx?logontype=nemid',
+		), keep_alive => 1);
+	},
+
+	'/nemid/Logon/LogonPrivate' => sub {
+		my $req = shift;
+		$req->uri("https://logon.e-boks.dk/".$req->uri);
+		$req->header( Host => 'logon.e-boks.dk');
+		$req->header( 'Accept-Encoding' => 'identity');
+		my $resp = IO::Lambda::HTTP::Client->new( $req)->wait;
+		return $resp unless $resp->is_success;
+		return (undef, "Cannot get NemID ticket") unless $resp->content =~ /name="Ticket" value="(.*?)"/;
+		my ( undef, $error) = $e->fetch_request($e->session_activate($1))->wait;
+		return "Cannot activate device: $error" if defined $error;
+		$server->shutdown;
+		return html '<h2>Device is activated!</h2><p>Now you can use the module with your credentials';
+	},
 );
-my ($uname, $error) = $e->fetch_request($e->login)->wait;
-die "error: $error\n" if defined $error;
-print "Welcome, $uname. Now nemid auth is needed...\n";
 
-my $port = 9999;
-my $ticket;
-
-my $server = IO::Socket::INET->new(
-        Listen    => 2,
-        LocalAddr => '127.0.0.1',
-        LocalPort => $port,
-        Reuse     => 1,
-) or die "Cannot bind to port $port:$!\n";
-
-$SIG{__DIE__} = sub {
-	warn @_;
-	exit 1;
-};
-
-my $conn_timeout = 5;
-my $serv = lambda {
-	context $server;
-	accept {
-		my $conn = shift;
-		die $conn unless ref($conn);
-		$conn-> blocking(0);
-
-		my $buf = '';
-		context readbuf, $conn, \$buf, qr/^(.*?)\r\n\r\n/s, $conn_timeout;
-	tail {
-		my ( $match, $error) = @_;
-		die $error unless defined $match;
-		my $req = HTTP::Request-> parse( $match) or die "bad request";
-		$buf =~ s/^.*?\r\n\r\n//s;
-		my $cl  = $req->header('Content-Length') // 0;
-		context $cl ? 
-			(readbuf, $conn, \$buf, qr/^.{$cl}/s, $conn_timeout) :
-			(lambda {});
-	tail {
-		my ( undef, $error) = @_;
-		die $error if defined $error;
-		warn "No ticket in response" unless $buf =~ /Ticket=(.*?)(&|$)/;
-		$ticket = $1;
-		print "got entry ticket\n";
-
-		my $resp = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
-		context writebuf, $conn, \$resp, length($resp), 0, $conn_timeout;
-	tail {
-	}}}}
-};
-
-my ($url) = 'https://m.e-boks.dk/app/logon.aspx?logontype=nemid';
- 
-my $window = Gtk3::Window->new('toplevel');
-$window->set_default_size(600, 600);
-$window->signal_connect(destroy => sub { $serv->terminate });
-
-my $view = Gtk3::WebKit::WebView->new();
-$view->signal_connect('resource-request-starting' => sub {
-	my $req = $_[3];
-	if ($req->get_uri eq 'https://m.e-boks.dk/app/logon.aspx') {
-		$req->set_uri("http://localhost:$port/");
+my $error;
+($server, $error) = http_server {
+	my $req = shift;
+	if ( my $cb = $routes{$req->uri}) {
+		return $cb->($req);
+	} else {
+		my $msg = "Something wrong happened, ".$req->uri. " is not supposed to be accessed";
+		return HTTP::Response->new( 404, "Not Found", ['Content-Length' => length($msg)], $msg);
 	}
-});
-$view->load_uri($url);
- 
-my $scrolls = Gtk3::ScrolledWindow->new();
-$scrolls->add($view);
-$window->add($scrolls);
-$window->show_all();
-$serv->wait;
-$window->close;
-die "Aborted\n" unless defined $ticket;
-
-print "Activating device $e->{deviceid}..\n";
-( undef, $error) = $e->fetch_request($e->session_activate($ticket))->wait;
-die $error if defined $error;
-
-print "all okay\n";
+} "localhost:$port", timeout => 10;
+die $error unless $server;
+die "error: $error\n" if defined $error;
+print "Open a browser and go to this address:\n";
+print "\n   http://localhost:$port/\n\n";
+$server->wait;

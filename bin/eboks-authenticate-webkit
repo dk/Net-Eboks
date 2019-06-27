@@ -1,0 +1,110 @@
+#!perl
+use strict;
+use warnings;
+use Gtk3 -init;
+use Gtk3::WebKit;
+use IO::Socket;
+use HTTP::Request;
+use HTTP::Response;
+use Net::Eboks;
+use IO::Socket::INET;
+use IO::Lambda qw(:all);
+use IO::Lambda::Socket qw(:all);
+use IO::Lambda::Loop::Glib;
+
+my %opt;
+sub fetch
+{
+	my $key = shift;
+	$|=1;
+	print "Enter $key code: ";
+	$opt{$key} = <STDIN>;
+	chomp $opt{$key};
+	print "\n";
+}
+
+fetch($_) for qw(cpr pincode);
+$opt{cpr} =~ s/\-//g;
+my $e = Net::Eboks->new(
+	cpr        => $opt{cpr},
+	password   => $opt{pincode},
+);
+my ($uname, $error) = $e->fetch_request($e->login)->wait;
+die "error: $error\n" if defined $error;
+print "Welcome, $uname. Now nemid auth is needed...\n";
+
+my $port = 9999;
+my $ticket;
+
+my $server = IO::Socket::INET->new(
+        Listen    => 2,
+        LocalAddr => '127.0.0.1',
+        LocalPort => $port,
+        Reuse     => 1,
+) or die "Cannot bind to port $port:$!\n";
+
+$SIG{__DIE__} = sub {
+	warn @_;
+	exit 1;
+};
+
+my $conn_timeout = 5;
+my $serv = lambda {
+	context $server;
+	accept {
+		my $conn = shift;
+		die $conn unless ref($conn);
+		$conn-> blocking(0);
+
+		my $buf = '';
+		context readbuf, $conn, \$buf, qr/^(.*?)\r\n\r\n/s, $conn_timeout;
+	tail {
+		my ( $match, $error) = @_;
+		die $error unless defined $match;
+		my $req = HTTP::Request-> parse( $match) or die "bad request";
+		$buf =~ s/^.*?\r\n\r\n//s;
+		my $cl  = $req->header('Content-Length') // 0;
+		context $cl ? 
+			(readbuf, $conn, \$buf, qr/^.{$cl}/s, $conn_timeout) :
+			(lambda {});
+	tail {
+		my ( undef, $error) = @_;
+		die $error if defined $error;
+		warn "No ticket in response" unless $buf =~ /Ticket=(.*?)(&|$)/;
+		$ticket = $1;
+		print "got entry ticket\n";
+
+		my $resp = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
+		context writebuf, $conn, \$resp, length($resp), 0, $conn_timeout;
+	tail {
+	}}}}
+};
+
+my ($url) = 'https://m.e-boks.dk/app/logon.aspx?logontype=nemid';
+ 
+my $window = Gtk3::Window->new('toplevel');
+$window->set_default_size(600, 600);
+$window->signal_connect(destroy => sub { $serv->terminate });
+
+my $view = Gtk3::WebKit::WebView->new();
+$view->signal_connect('resource-request-starting' => sub {
+	my $req = $_[3];
+	if ($req->get_uri eq 'https://m.e-boks.dk/app/logon.aspx') {
+		$req->set_uri("http://localhost:$port/");
+	}
+});
+$view->load_uri($url);
+ 
+my $scrolls = Gtk3::ScrolledWindow->new();
+$scrolls->add($view);
+$window->add($scrolls);
+$window->show_all();
+$serv->wait;
+$window->close;
+die "Aborted\n" unless defined $ticket;
+
+print "Activating device $e->{deviceid}..\n";
+( undef, $error) = $e->fetch_request($e->session_activate($ticket))->wait;
+die $error if defined $error;
+
+print "all okay\n";
