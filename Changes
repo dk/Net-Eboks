@@ -1,3 +1,6 @@
+0.07  - 27 Jun 2019
+        rewrite eboks-authenticate without gtk-webkit 
+
 0.06  - 12 May 2019
 	support nemid login	
 

@@ -16,7 +16,7 @@ use IO::Lambda qw(:all);
 use IO::Lambda::HTTP qw(http_request);
 use Crypt::OpenSSL::RSA;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 sub new
 {
