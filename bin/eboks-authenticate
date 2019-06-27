@@ -68,18 +68,16 @@ that the device is, indeed yours.<br> On the next page you will be presented
 the standard NemID dialog, that you need to login as you usually do.<br>
 If you are going to authorize the login with your NemID app, make sure that
 the requestor is "E-Boks login".
-<form action="/logon" method="POST">
+<form action="/step2" method="POST">
 <input type="submit" value="Next">
 </form>
 SUCCESS
 	},
 
-	'/logon' => sub {
-		my $req = shift;
-		return IO::Lambda::HTTP::Client->new( HTTP::Request->new(
-			'GET',
-			'https://m.e-boks.dk/app/logon.aspx?logontype=nemid',
-		), keep_alive => 1);
+	'/step2' => sub {
+		IO::Lambda::HTTP::Client->new( HTTP::Request->new(
+			GET => 'https://m.e-boks.dk/app/logon.aspx?logontype=nemid'
+		), keep_alive => 1)
 	},
 
 	'/nemid/Logon/LogonPrivate' => sub {
