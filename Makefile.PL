@@ -13,7 +13,7 @@ WriteMakefile(
 	PREREQ_PM      => { 
 		'LWP'          => 0,
 		'DateTime'     => 0,
-		'IO::Lambda'   => 1.28,
+		'IO::Lambda'   => 1.29,
 		'MIME::Entity' => 0,
 		'MIME::Base64' => 0,
 		'XML::Simple'  => 0,
