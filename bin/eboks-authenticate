@@ -108,7 +108,6 @@ my $error;
 	}
 } "localhost:$port", timeout => 10;
 die $error unless $server;
-die "error: $error\n" if defined $error;
 print "Open a browser and go to this address:\n";
 print "\n   http://localhost:$port/\n\n";
 $server->wait;
