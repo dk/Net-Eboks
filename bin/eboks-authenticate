@@ -10,11 +10,8 @@ use URI::QueryParam;
 use HTTP::Request;
 use HTTP::Response;
 
-my $e;
 my $port = 9999;
-
-my $ticket;
-my $server;
+my ($server, $error, $e);
 
 sub html($)
 {
@@ -95,7 +92,6 @@ SUCCESS
 	},
 );
 
-my $error;
 ($server, $error) = http_server {
 	my $req = shift;
 	if ( my $cb = $routes{$req->uri}) {
