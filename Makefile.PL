@@ -8,7 +8,10 @@ WriteMakefile(
 	AUTHOR         => 'Dmitry Karasik <dmitry@karasik.eu.org>',
 	ABSTRACT_FROM  => 'Eboks.pm',
 	VERSION_FROM   => 'Eboks.pm',
-        EXE_FILES      => [map { "bin/eboks$_" } qw(2pop -dump -authenticate)],
+        EXE_FILES      => [
+		map { "bin/eboks$_" } qw(2pop -dump -authenticate),
+		(($^O =~ /win32/i) ? '-install-win32' : ())
+	],
         LICENSE        => 'freebsd',
 	PREREQ_PM      => { 
 		'LWP'          => 0,
