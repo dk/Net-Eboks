@@ -38,7 +38,10 @@ Menu/Mobiladgang/Aktiverede enheder).
 This step should be done one time only, for each user, not for each
 installation. 
 
-Security note: There are no security concerns others than the usual suspects
+**Security note**: *No data is stored on the computer in the process, the only record is stored
+on the eBoks server itself*.
+
+Also, there are no security concerns others than the usual suspects
 when one uses NemID logins by other means. To be extra paranoid though, use
 only two-factor authentication through NemID app, not through one-time pads, as
 the app shows who is the issuer of the login request when asking for its
