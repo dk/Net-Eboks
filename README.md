@@ -118,7 +118,7 @@ from command line.
 running on server localhost, port 8110. Username and password are your CPR# and
 eBoks mobile password.
 
-3) Optionally, if you want to forward the mails, you choose from numerous
+3) Optionally, if you want to forward the mails, you can choose from numerous
 programs that can forward mails from a POP3 server to another mail account
 [(list of
 examples)](https://blogs.technet.microsoft.com/brucecowper/2005/03/18/pop-connectors-pullers-for-exchange/).
