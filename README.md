@@ -29,23 +29,23 @@ For each user, you will need to go through one-time registration through you
 personal NemID signature. `eboks-authenticate` will start a small webserver on
 `http://localhost:9999/`, where you will need to connect to with a browser.
 There, it will ask for your CPR, your password (from e-boks Menu/Mobiladgang),
-and will try to show a standard NemID window, that you will need to log in, and
-then confirm that indeed you to allow the login to eBoks.  If that works, the
-script will send that to the eBoks server so it recognizes your future logins
-from a pseudo device (you would see it as Net-Eboks in
-Menu/Mobiladgang/Aktiverede enheder).
+and will try to show a standard NemID window. You will need to log in there, in
+the way you usually do, using either one-time pads or the NemID app, and then
+confirm the request from eBoks. If that works, the script will register the
+pseudo device Net-Eboks for future logins (you would see the device entry in
+Menu/Mobiladgang/Aktiverede enheder; you can also disable it from there).
 
-This step should be done one time only, for each user, not for each
-installation. 
+This step should be done only once per user, not per installation - after the
+registration you can access eBoks from any server that has this module installed.
 
 **Security note**: *No data is stored on the computer in the process, the only record is stored
 on the eBoks server itself*.
 
-Also, there are no security concerns others than the usual suspects
-when one uses NemID logins by other means. To be extra paranoid though, use
-only two-factor authentication through NemID app, not through one-time pads, as
-the app shows who is the issuer of the login request when asking for its
-confirmation.  Make sure the requestor is eBoks, not your bank :)
+Also, there are no specific security concerns others than the usual suspects
+when one logs into NemID. To be extra paranoid though, use only two-factor
+authentication through NemID app, not through one-time pads, as the app shows
+who is the issuer of the login request when asking for its confirmation.  Make
+sure the requestor is eBoks, not your bank :)
 
 Operations
 ==========
@@ -97,6 +97,34 @@ setup is basically same as in previous section, but see
 
 The problem you might encounter is that the module generates mails as
 originated from `noreply@e-boks.dk` and f.ex. Gmail won't accept that due to
-DMARC. See if rewriting the sender as in `examples/procmail.forward.srs` helps.
+[SPF](https://en.wikipedia.org/wiki/Sender_Policy_Framework). See if rewriting
+the sender as in `examples/procmail.forward.srs` helps.
+
+Use on Windows desktop
+----------------------
+
+1) Assuming you have installed strawberry perl and the module, open command line and run
+
+  `eboks-install-win32`
+
+that will copy `eboks2pop` shortcut into your Startup folder. You can run it either
+by going there and starting it manually, or again by running 
+
+  `eboks-install-win32 start`
+
+from command line.
+
+2) Set up your favourite desktop mail reader so it connects to a POP3 server
+running on server localhost, port 8110. Username and password are your CPR# and
+eBoks mobile password.
+
+3) Optionally, if you want to forward the mails, you choose from numerous
+programs that can forward mails from a POP3 server to another mail account
+[(list of
+examples)](https://blogs.technet.microsoft.com/brucecowper/2005/03/18/pop-connectors-pullers-for-exchange/).
+If you use Outlook it [can do that
+too](https://www.laptopmag.com/articles/how-to-set-up-auto-forwarding-in-outlook-2013).
+
+
 
 Enjoy!
