@@ -114,12 +114,12 @@ by going there and starting it manually, or again by running
 
 from command line. If you want to check that it is running okay, run
 
-    `telnet localhost 8110`
+  `telnet localhost 8110`
 
 from command line (you don't need to, just for troubleshooting). If it connects to
 and says
 
-   `+OK POP3 server ready`
+  `+OK POP3 server ready`
 
 then you're all set. Type `QUIT` there to disconnect.
 
