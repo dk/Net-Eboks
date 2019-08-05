@@ -108,11 +108,20 @@ Use on Windows desktop
   `eboks-install-win32`
 
 that will copy `eboks2pop` shortcut into your Startup folder. You can run it either
-by going there and starting it manually, or again by running 
+by going there and starting it manually, or again by running
 
   `eboks-install-win32 start`
 
-from command line.
+from command line. If you want to check that it is running okay, run
+
+    `telnet localhost 8110`
+
+from command line (you don't need to, just for troubleshooting). If it connects to
+and says
+
+   `+OK POP3 server ready`
+
+then you're all set. Type `QUIT` there to disconnect.
 
 2) Set up your favourite desktop mail reader so it connects to a POP3 server
 running on server localhost, port 8110. Username and password are your CPR# and
