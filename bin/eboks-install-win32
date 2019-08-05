@@ -28,6 +28,23 @@ PS
 	unlink $tmp;
 
 	print "\n\nLOOKS OKAY\n";
+
+	$|++;
+	while ( 1 ) {
+		print "Do you want to authenticate with NemID now? [n] ";
+		$_ = lc <>;
+		chomp;
+		if ($_ eq 'n' or $_ eq '') {
+			print "You can always run it later by running 'eboks-authenticate'\n";
+			exit;
+		}
+		last if $_ eq 'y';
+	}
+	print "Starting browser..\n";
+	system 'start /b http://localhost:9999/';
+	print "You can close [x] this window after NemID auth is completed or you want to abort the process\n\n";
+	print "Starting authenticator...\n";
+	system 'eboks-authenticate' and die "Cannot run eboks-authenticate:$!\n";
 } elsif ( $what eq 'start') {
 	system $cmd;
 } elsif ( $what eq 'remove') {
