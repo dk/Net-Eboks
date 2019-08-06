@@ -52,7 +52,7 @@ First you need to install a POP3 proxy that will start with Windows.<p>
 <input type="submit" name="remove" value="Remove">
 <input type="submit" name="check" value="Check">
 </form>
-<p><a href="/auth">Skip to NemID authentication</a><p>
+<p><a href="/auth">Skip to eBoks authentication</a><p>
 WIN32_INSTALL
 	},
 	'/win32_install_do' => sub {
@@ -64,7 +64,7 @@ WIN32_INSTALL
 			system "eboks-install-win32 start";
 			my $pop3 = pop3;
 			return error 'Proxy installed but not started, please start manually' unless $pop3;
-			return h2x 'Proxy installed okay', '<a href="/auth">Continue to NemID authentication</a>';
+			return h2x 'Proxy installed okay', '<a href="/auth">Continue to eBoks authentication</a>';
 		} elsif ( $req->content =~ /^remove/) {
 			system "eboks-install-win32 stop";
 			system "eboks-install-win32 remove";

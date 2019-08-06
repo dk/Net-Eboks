@@ -107,7 +107,8 @@ Use on Windows desktop
 
   `eboks-install-win32`
 
-that will fire up a browser-based install wizard.
+that will fire up a browser-based install wizard. Click "Install", then login witn eBoks
+credentials and NemID credentials.
 
 2) Set up your favourite desktop mail reader so it connects to a POP3 server
 running on server localhost, port 8110. Username and password are your CPR# and
