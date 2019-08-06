@@ -176,7 +176,7 @@ die $error unless $server;
 
 if ( $win32_install ) {
 	require Win32API::File;
-	import Win32API::File qw(GetOsFHandle GetHandleInformation SetHandleInformation HANDLE_FLAG_INHERIT);
+	import Win32API::File qw(GetOsFHandle SetHandleInformation HANDLE_FLAG_INHERIT);
 	warn $^E unless SetHandleInformation(GetOsFHandle($server->{socket}), HANDLE_FLAG_INHERIT(), 0);
 }
 
