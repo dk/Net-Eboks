@@ -43,10 +43,10 @@ sub fetch
 	return if length $opt{$key};
 	$|=1;
 	print "Enter $key code: ";
-	system("stty -echo");
+	system("stty -echo") if $^O !~ /win32/i;
 	$opt{$key} = <STDIN>;
 	chomp $opt{$key};
-	system("stty echo");
+	system("stty echo") if $^O !~ /win32/i;
 	print "\n";
 }
 
