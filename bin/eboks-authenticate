@@ -125,6 +125,7 @@ SUCCESS
 	},
 
 	'/step2' => sub {
+		return error 'Not logged in' unless $e;
 		IO::Lambda::HTTP::Client->new( HTTP::Request->new(
 			GET => 'https://m.e-boks.dk/app/logon.aspx?logontype=nemid'
 		), keep_alive => 1)
@@ -132,6 +133,7 @@ SUCCESS
 
 	'/nemid/Logon/LogonPrivate' => sub {
 		my $req = shift;
+		return error 'Not logged in' unless $e;
 		$req->uri("https://logon.e-boks.dk/".$req->uri);
 		$req->header( Host => 'logon.e-boks.dk');
 		$req->header( 'Accept-Encoding' => 'identity');
