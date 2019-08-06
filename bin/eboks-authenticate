@@ -55,6 +55,7 @@ First you need to install a POP3 proxy that will start with Windows.<p>
 <p><a href="/auth">Skip to eBoks authentication</a><p>
 WIN32_INSTALL
 	},
+
 	'/win32_install_do' => sub {
 		my $req = shift;
 		return (undef, "bad response") unless $req->method eq 'POST';
@@ -75,6 +76,7 @@ WIN32_INSTALL
 			return $routes{'/'}->();
 		}
 	},
+
 	'/auth' => sub { html <<'INIT' . ($win32_install ? main : '') . quit;
 <h2>Welcome to the Eboks/Nemid authenticator</h2>
 <p>
