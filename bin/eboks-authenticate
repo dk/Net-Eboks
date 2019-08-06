@@ -13,6 +13,11 @@ use HTTP::Response;
 my $port = 9999;
 my ($server, $error, $e);
 
+my $win32_install = (( $ARGV[0] // '' ) eq '--win32-install');
+
+sub mailcheck { $win32_install ?  '<p><a href="/testmail">Skip to mail check</a>' : '' }
+sub quit      { '<p><a href="/abort">Quit the wizard</a><p>' }
+
 sub html($)
 {
 	my $html = $_[0];
@@ -23,8 +28,54 @@ sub html($)
 	], $html)
 }
 
-my %routes = (
-	'/' => sub { html <<'INIT'
+sub pop3
+{
+	return IO::Socket::INET-> new(
+		PeerAddr => '127.0.0.1',
+		PeerPort => 8110,
+		Proto    => 'tcp',
+	);
+}
+
+sub h2($)      { html "<h2>$_[0]</h2>" }
+sub h2x($$)    { html "<h2>$_[0]</h2><p>$_[1]" } 
+sub error($)   { h2x( 'Error', $_[0] ) }
+
+my %routes;
+%routes = (
+	'/win32_install' => sub { html <<'WIN32_INSTALL'
+<h2>Welcome to the Eboks/Nemid installation wizard</h2><p>
+First you need to install a POP3 proxy that will start with Windows.<p>
+<form action="/win32_install_do" method="POST">
+<input type="submit" name="install" value="Install">
+<input type="submit" name="remove" value="Remove">
+<input type="submit" name="check" value="Check">
+</form>
+<p><a href="/auth">Skip to NemID authentication</a><p>
+<p><a href="/abort">Quit the wizard</a><p>
+WIN32_INSTALL
+	},
+	'/win32_install_do' => sub {
+		my $req = shift;
+		return (undef, "bad response") unless $req->method eq 'POST';
+		if ( $req->content =~ /^install/) {
+			my $resp = `eboks-install-win32 install 2>&1`;
+			return error "Something wrong happened:<p><pre>$resp</pre>" unless $resp =~ /LOOKS OKAY/;
+			system "eboks-install-win32 start";
+			my $pop3 = pop3;
+			return error 'Proxy installed but not started, please start manually' unless $pop3;
+			return h2 'Proxy installed okay. <a href="/auth>Continue to NemID authentication</a>';
+		} elsif ( $req->content =~ /^remove/) {
+			system "eboks-install-win32 stop";
+			system "eboks-install-win32 remove";
+			return h2 'POP3 proxy removed';
+		} elsif ( $req->content =~ /^check/) {
+			return pop3 ? h2 'Running okay' : error 'Not running';
+		} else {
+			return $routes{'/'}->();
+		}
+	},
+	'/auth' => sub { html <<'INIT' . quit;
 <h2>Welcome to the Eboks/Nemid authenticator</h2>
 <p>
 This step is needed to bind a device, usually a mobile phone, to
@@ -56,7 +107,7 @@ INIT
 		);
 		my ($uname, $error) = $e->fetch_request($e->login)->wait;
 		return (undef, "Error logging to E-Boks:$error") if defined $error;
-		return html <<SUCCESS;
+		return html <<SUCCESS . mailcheck . quit;
 <h2>Welcome, $uname!</h2>
 <p>
 The login to E-Boks was successful.<br>
@@ -88,9 +139,27 @@ SUCCESS
 		my ( undef, $error) = $e->fetch_request($e->session_activate($1))->wait;
 		return "Cannot activate device: $error" if defined $error;
 		$server->shutdown;
-		return html '<h2>Device is activated!</h2><p>Now you can use the module with your credentials';
+		return h2x('Device is activated!', 'Now you can use the module with your credentials.' . mailcheck);
+	},
+
+	'/testmail' => sub {
+		return error 'Not logged in' unless $e;
+		my ($folders, $error) = $e->fetch_request( $e->folders )->wait;
+		return error $error unless $folders;
+		$server->shutdown;
+		return h2x 'All okay',
+			'These are your e-Boks mail folders, retrieved from the remote server:<p>'.
+			join('<br>', map { "<i>$_</i>" } sort keys %$folders) . '<p>'.
+			'Looks like you have it up and running. You may close the page now';
+	},
+
+	'/abort' => sub { 
+		$server->shutdown;
+		return html '<h2>Installation aborted</h2>';
 	},
 );
+
+$routes{'/'} = $win32_install ? $routes{'/win32_install'} : $routes{'/auth'};
 
 ($server, $error) = http_server {
 	my $req = shift;

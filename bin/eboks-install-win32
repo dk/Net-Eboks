@@ -6,9 +6,15 @@ use Config;
 my $tmp  = ($ENV{TEMP} // '.')."/install-$$.bat";
 my $cmd = $Config{sitebin} . "/eboks2pop-win32.cmd";
 
-my $what = $ARGV[0] // 'install';
+my $what = $ARGV[0] // 'wizard';
 
-if ($what eq 'install') {
+if ($what eq 'wizard') {
+	print "Starting browser..\n";
+	system 'start /b http://localhost:9999/';
+	print "You can close [x] this window when finished or if you want to abort the process\n\n";
+	print "Starting authenticator...\n";
+	system 'eboks-authenticate --win32-install' and die "Cannot run eboks-authenticate:$!\n";
+} elsif ($what eq 'install') {
 	open F, ">", $cmd or die $!;
 	print F '@start /b wperl "' . $Config{sitebin} . '/eboks2pop" -p 8110' . "\n";
 	close F;
@@ -28,25 +34,18 @@ PS
 	unlink $tmp;
 
 	print "\n\nLOOKS OKAY\n";
-
-	$|++;
-	while ( 1 ) {
-		print "Do you want to authenticate with NemID now? [n] ";
-		$_ = lc <>;
-		chomp;
-		if ($_ eq 'n' or $_ eq '') {
-			print "You can always run it later by running 'eboks-authenticate'\n";
-			exit;
-		}
-		last if $_ eq 'y';
-	}
-	print "Starting browser..\n";
-	system 'start /b http://localhost:9999/';
-	print "You can close [x] this window after NemID auth is completed or you want to abort the process\n\n";
-	print "Starting authenticator...\n";
-	system 'eboks-authenticate' and die "Cannot run eboks-authenticate:$!\n";
 } elsif ( $what eq 'start') {
 	system $cmd;
+} elsif ( $what eq 'stop') {
+	require IO::Socket::INET;
+	my $sock = IO::Socket::INET-> new(
+		PeerAddr => '127.0.0.1',
+		PeerPort => 8110,
+		Proto    => 'tcp',
+	);
+	die "Not running\n" unless $sock;
+	$_=<$sock>;
+	print $sock "_terminate\n";
 } elsif ( $what eq 'remove') {
 	unlink "$ENV{userprofile}\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\eboks2pop.lnk" or die "Cannot remove:$!";
 	print "Removed okay\n";

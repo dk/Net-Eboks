@@ -49,7 +49,7 @@ my $server = IO::Socket::INET-> new(
 	LocalAddr => $opt{addr},
 	LocalPort => $opt{port},
 	Blocking  => 0,
-	ReuseAddr => 1,
+	ReuseAddr => ($^O !~ /win32/i),
 );
 unless ($server) {
 	my $err = $!;
@@ -311,6 +311,8 @@ sub pop3_top
 		return multi('top of message follows', @lines);
 	}}}
 }
+
+sub pop3__terminate { exit }
 
 sub handle
 {
