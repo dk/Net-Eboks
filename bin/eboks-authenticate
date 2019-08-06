@@ -64,7 +64,7 @@ WIN32_INSTALL
 			return error "Something wrong happened:<p><pre>$resp</pre>" unless $resp =~ /LOOKS OKAY/;
 			system "eboks-install-win32 start";
 			my $pop3 = pop3;
-			return error 'Proxy installed but not started, please start manually' unless $pop3;
+			return error 'Proxy installed but not started, please start manually or wait and recheck' unless $pop3;
 			return h2x 'Proxy installed okay', '<a href="/auth">Continue to eBoks authentication</a>';
 		} elsif ( $req->content =~ /^remove/) {
 			system "eboks-install-win32 stop";
