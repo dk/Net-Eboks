@@ -17,6 +17,7 @@ my $win32_install = (( $ARGV[0] // '' ) eq '--win32-install');
 
 sub mailcheck { $win32_install ?  '<p><a href="/testmail">Skip to mail check</a>' : '' }
 sub quit      { '<p><a href="/abort">Quit the wizard</a><p>' }
+sub main      { '<p><a href="/">Main menu</a><p>' }
 
 sub html($)
 {
@@ -37,13 +38,13 @@ sub pop3
 	);
 }
 
-sub h2($)      { html "<h2>$_[0]</h2>" }
-sub h2x($$)    { html "<h2>$_[0]</h2><p>$_[1]" } 
+sub h2($)      { html "<h2>$_[0]</h2>" . main . quit }
+sub h2x($$)    { html "<h2>$_[0]</h2><p>$_[1]" . main . quit } 
 sub error($)   { h2x( 'Error', $_[0] ) }
 
 my %routes;
 %routes = (
-	'/win32_install' => sub { html <<'WIN32_INSTALL'
+	'/win32_install' => sub { html <<'WIN32_INSTALL' . quit
 <h2>Welcome to the Eboks/Nemid installation wizard</h2><p>
 First you need to install a POP3 proxy that will start with Windows.<p>
 <form action="/win32_install_do" method="POST">
@@ -52,7 +53,6 @@ First you need to install a POP3 proxy that will start with Windows.<p>
 <input type="submit" name="check" value="Check">
 </form>
 <p><a href="/auth">Skip to NemID authentication</a><p>
-<p><a href="/abort">Quit the wizard</a><p>
 WIN32_INSTALL
 	},
 	'/win32_install_do' => sub {
@@ -64,7 +64,7 @@ WIN32_INSTALL
 			system "eboks-install-win32 start";
 			my $pop3 = pop3;
 			return error 'Proxy installed but not started, please start manually' unless $pop3;
-			return h2 'Proxy installed okay. <a href="/auth>Continue to NemID authentication</a>';
+			return h2x 'Proxy installed okay', '<a href="/auth">Continue to NemID authentication</a>';
 		} elsif ( $req->content =~ /^remove/) {
 			system "eboks-install-win32 stop";
 			system "eboks-install-win32 remove";
@@ -75,7 +75,7 @@ WIN32_INSTALL
 			return $routes{'/'}->();
 		}
 	},
-	'/auth' => sub { html <<'INIT' . quit;
+	'/auth' => sub { html <<'INIT' . ($win32_install ? main : '') . quit;
 <h2>Welcome to the Eboks/Nemid authenticator</h2>
 <p>
 This step is needed to bind a device, usually a mobile phone, to
@@ -106,8 +106,8 @@ INIT
 			password   => $uri->query_param('login') // ''
 		);
 		my ($uname, $error) = $e->fetch_request($e->login)->wait;
-		return (undef, "Error logging to E-Boks:$error") if defined $error;
-		return html <<SUCCESS . mailcheck . quit;
+		return error "Error logging to E-Boks:$error" if defined $error;
+		return html <<SUCCESS . mailcheck . main . quit;
 <h2>Welcome, $uname!</h2>
 <p>
 The login to E-Boks was successful.<br>
@@ -135,9 +135,9 @@ SUCCESS
 		$req->header( 'Accept-Encoding' => 'identity');
 		my $resp = IO::Lambda::HTTP::Client->new( $req)->wait;
 		return $resp unless $resp->is_success;
-		return (undef, "Cannot get NemID ticket") unless $resp->content =~ /name="Ticket" value="(.*?)"/;
+		return error "Cannot get NemID ticket" unless $resp->content =~ /name="Ticket" value="(.*?)"/;
 		my ( undef, $error) = $e->fetch_request($e->session_activate($1))->wait;
-		return "Cannot activate device: $error" if defined $error;
+		return error "Cannot activate device: $error" if defined $error;
 		$server->shutdown;
 		return h2x('Device is activated!', 'Now you can use the module with your credentials.' . mailcheck);
 	},
@@ -147,13 +147,13 @@ SUCCESS
 		my ($folders, $error) = $e->fetch_request( $e->folders )->wait;
 		return error $error unless $folders;
 		$server->shutdown;
-		return h2x 'All okay',
+		return html '<h2>All okay</h2><p>'.
 			'These are your e-Boks mail folders, retrieved from the remote server:<p>'.
 			join('<br>', map { "<i>$_</i>" } sort keys %$folders) . '<p>'.
 			'Looks like you have it up and running. You may close the page now';
 	},
 
-	'/abort' => sub { 
+	'/abort' => sub {
 		$server->shutdown;
 		return html '<h2>Installation aborted</h2>';
 	},
@@ -171,6 +171,13 @@ $routes{'/'} = $win32_install ? $routes{'/win32_install'} : $routes{'/auth'};
 	}
 } "localhost:$port", timeout => 10;
 die $error unless $server;
+
+if ( $win32_install ) {
+	require Win32API::File;
+	import Win32API::File qw(GetOsFHandle GetHandleInformation SetHandleInformation HANDLE_FLAG_INHERIT);
+	warn $^E unless SetHandleInformation(GetOsFHandle($server->{socket}), HANDLE_FLAG_INHERIT(), 0);
+}
+
 print "Open a browser and go to this address:\n";
 print "\n   http://localhost:$port/\n\n";
 $server->wait;
