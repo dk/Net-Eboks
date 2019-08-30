@@ -28,6 +28,7 @@ sub new
 		type       => 'P',
 		datetime   => DateTime->now->strftime('%Y-%m-%d %H:%M:%SZ'),
 		root       => 'rest.e-boks.dk',
+		mailapp    => '/mobile/1/xml.svc/en-gb',
 		deviceid   => 'DEADBEEF-1337-1337-1337-900000000002',
 
 		nonce      => '',
@@ -35,6 +36,7 @@ sub new
 		response   => "3a1a51f235a8bd6bbc29b2caef986a1aeb77018d60ffdad9c5e31117e7b6ead3", # XXX
 		uid        => undef,
 		uname      => undef,
+		share_id   => '0',
 		conn_cache => LWP::ConnCache->new,
 
 		%opts,
@@ -173,7 +175,7 @@ XML
 
 	my $login = HTTP::Request->new(
 		'PUT',
-		'https://' . $self->{root} . '/mobile/1/xml.svc/en-gb/session',
+		'https://' . $self->{root} . $self->{mailapp} . '/session',
 		[
 			'Content-Type'         => 'application/xml',
 			'Content-Length'       => length($content),
@@ -226,7 +228,7 @@ XML
 
 	my $login = HTTP::Request->new(
 		'PUT',
-		'https://' . $self->{root} . "/mobile/1/xml.svc/en-gb/$self->{uid}/0/session/activate",
+		'https://' . $self->{root} . $self->{mailapp} . "/$self->{uid}/0/session/activate",
 		[
 			'Content-Type'         => 'application/xml',
 			'Content-Length'       => length($content),
@@ -251,7 +253,7 @@ sub get
 	my $authstr = join(',', map { "$_=\"$self->{$_}\"" } qw(deviceid nonce sessionid response));
 	my $get = HTTP::Request->new(
 		'GET',
-		'https://' . $self->{root} . '/' . $path,
+		'https://' . $self->{root} . $self->{mailapp} . '/' . $path,
 		[
 			'X-EBOKS-AUTHENTICATE' => $authstr,
 			'Accept'               => '*/*',
@@ -292,7 +294,14 @@ sub folders
 {
 	my $self = shift;
 	return undef unless $self->{uid};
-	$self-> xmlget("/mobile/1/xml.svc/en-gb/$self->{uid}/0/mail/folders", ['FolderInfo']);
+	$self-> xmlget("$self->{uid}/$self->{share_id}/mail/folders", ['FolderInfo']);
+}
+
+sub shares
+{
+	my $self = shift;
+	return undef unless $self->{uid};
+	$self-> xmlget("$self->{uid}/0/shares?listType=active", ['Share']);
 }
 
 sub messages
@@ -302,7 +311,7 @@ sub messages
 	$limit  //= 1;
 	$offset //= 0;
 	$self-> xmlget(
-		"/mobile/1/xml.svc/en-gb/$self->{uid}/0/mail/folder/$folder_id?skip=$offset&take=$limit", 
+		"$self->{uid}/$self->{share_id}/mail/folder/$folder_id?skip=$offset&take=$limit", 
 		[ qw(Messages 0 MessageInfo) ],
 		KeyAttr => 'id'
 	);
@@ -313,7 +322,7 @@ sub message
 	my ($self, $folder_id, $message_id) = @_;
 	return undef unless $self->{uid};
 	$self-> xmlget(
-		"/mobile/1/xml.svc/en-gb/$self->{uid}/0/mail/folder/$folder_id/message/$message_id",
+		"$self->{uid}/$self->{share_id}/mail/folder/$folder_id/message/$message_id",
 		[],
 		KeyAttr => 'id'
 	);
@@ -323,7 +332,7 @@ sub content
 {
 	my ( $self, $folder_id, $content_id ) = @_;
 	return 
-		$self-> get( "/mobile/1/xml.svc/en-gb/$self->{uid}/0/mail/folder/$folder_id/message/$content_id/content" ), sub {
+		$self-> get( "$self->{uid}/$self->{share_id}/mail/folder/$folder_id/message/$content_id/content" ), sub {
 			$self-> response( 0, @_ )
 		};
 }

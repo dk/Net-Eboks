@@ -7,6 +7,8 @@ use Getopt::Long;
 my %opt = (
 	cpr        => '',
 	pincode    => '',
+	share      => '0',
+	'list-shares' => 0,
 	output     => 'eboks.mbox',
 	help       => 0,
 );
@@ -19,9 +21,11 @@ sub usage
 
 $0
 
-   --cpr        - CPR code, 0123456-7890
-   --pincode    - PIN code
-   --output     - output mail box ( $opt{output} )
+   --cpr          - CPR code, 0123456-7890
+   --pincode      - PIN code
+   --share        - Share name
+   --list-shares  - Display list of available shares (0 is default)
+   --output       - output mail box ( $opt{output} )
    --help 
 
 USAGE
@@ -32,6 +36,8 @@ GetOptions(\%opt,
 	"help|h",
 	"cpr|c=s",
 	"pincode|p=s",
+	"share|s=s",
+	"list-shares|l",
 	"output|o=s",
 ) or usage;
 
@@ -58,11 +64,32 @@ my $e = Net::Eboks->new(
 	password   => $opt{pincode},
 );
 
-my ($uname, $error);
+my ($uname, $shares, $error);
 print "Logging in...\n";
 ($uname, $error) = $e->fetch_request($e->login_nemid)->wait;
 die "error: $error\n" if defined $error;
 print "Welcome, $uname\n";
+
+if ( $opt{'list-shares'} || $opt{share} ne '0') {
+	print "Getting list of shares...\n";
+	($shares, $error) = $e->fetch_request($e->shares)->wait;
+	die "error: $error\n" if defined $error;
+	my $found;
+	for my $k ( sort keys %$shares ) {
+		next if $k eq 'name';
+		if ( $opt{share} ne '0' && $k eq $opt{share}) {
+			$e->{share_id} = $shares->{$k}->{userId};
+			$found = 1;
+			print "Found share '$k'\n";
+		}
+		print "* $k\n" if $opt{'list-shares'};
+		if ( $opt{share} ne '0' && !$found) {
+			die "Cannot find share '$opt{share}'\n";
+		}
+	}
+	exit if $opt{'list-shares'};
+}
+
 
 print "Getting list of folders...\n";
 my ($folders, $list, $msg);
