@@ -289,7 +289,25 @@ sub pop3_list
 	}}
 }
 
-sub pop3_uidl { goto &pop3_list }
+sub pop3_uidl
+{
+	my ($session, $id) = @_;
+	return fail("not authorized") unless $session->{authorized};
+	return lambda {
+		context want_list($session);
+	tail { 
+		return remotefail($session->{error}) unless shift;
+		if ( defined $id) {
+			return fail("bad command") unless $id =~ /^\d+$/;
+			return fail("no such msg") if $id <= 0 || $id > $session->{msgs};
+			return ok($id . ' '. $session->{keys}->[$id-1]->{id});
+		} else {
+			return multi( "$session->{msgs} messages", 
+				(map { "$_ " . $session->{keys}->[$_-1]->{id} } (1..$session->{msgs})));
+		}
+	}}
+}
+
 sub pop3_noop { ok('') }
 sub pop3_dele { ok("not deleted, actually") }
 sub pop3_rset { fail("not implemented") }
