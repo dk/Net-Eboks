@@ -9,6 +9,7 @@ my %opt = (
 	pincode    => '',
 	share      => '0',
 	'list-shares' => 0,
+	'list-messages' => 0,
 	output     => 'eboks.mbox',
 	help       => 0,
 );
@@ -21,11 +22,12 @@ sub usage
 
 $0
 
-   --cpr          - CPR code, 0123456-7890
-   --pincode      - PIN code
-   --share        - Share name
-   --list-shares  - Display list of available shares (0 is default)
-   --output       - output mail box ( $opt{output} )
+   --cpr           - CPR code, 0123456-7890
+   --pincode       - PIN code
+   --share         - Share name
+   --list-shares   - Display list of available shares (0 is default)
+   --list-messages - Display list of available messages
+   --output        - output mail box ( $opt{output} )
    --help 
 
 USAGE
@@ -37,7 +39,9 @@ GetOptions(\%opt,
 	"cpr|c=s",
 	"pincode|p=s",
 	"share|s=s",
+	"messages|g=s",
 	"list-shares|l",
+	"list-messages|m",
 	"output|o=s",
 ) or usage;
 
@@ -102,17 +106,21 @@ die "error: $error\n" if defined $error;
 my @msgids = sort keys %$list;
 
 print "Got ", scalar(@msgids), " messages ... \n";
-open F, ">", $opt{output} or die "Cannot write $opt{output}:$!";
+unless ( $opt{'list-messages'} ) {
+	open F, ">", $opt{output} or die "Cannot write $opt{output}:$!";
+}
 
 my $n = 0;
 for my $msgid ( @msgids ) {
 	$n++;
 	my $m = $list->{$msgid};
 	print "Fetching #$n: ", $e->filename( $m ), " from $m->{receivedDateTime}...\n";
+	next if $opt{'list-messages'};
 	( $msg, $error ) = $e->fetch_message_and_attachments( $m )-> wait;
 	die "error: $error\n" if defined $error;
 	print F $e->assemble_mail(%$msg);
 }
-close F;
-
-print "Saved in $opt{output} as a mailbox. Open in your mail agent an enjoy!\n";
+unless ( $opt{'list-messages'} ) {
+	close F;
+	print "Saved in $opt{output} as a mailbox. Open in your mail agent an enjoy!\n";
+}

@@ -505,7 +505,7 @@ sub fetch_message_and_attachments
 
 		$opt{attachments}->{$att_id} = $att_body;
 		$att_id = shift @attachments or return \%opt;
-		context $self-> fetch_request( $self-> content( $message->{shareId}, message->{folderId}, $att_id ));
+		context $self-> fetch_request( $self-> content( $message->{shareId}, $message->{folderId}, $att_id ));
 		again;
 	}}}};
 }
