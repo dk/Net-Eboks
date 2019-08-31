@@ -18,9 +18,10 @@ The password is your mobile pincode.
 Installation
 ============
 
-* For windows, you'll need `perl`. Go to [strawberry perl](http://strawberryperl.com/) and fetch one.
+Unix/Linux
+----------
 
-* Install this module by opening command line and typing `cpan Net::Eboks` (with `sudo` if you need it system-wide)
+* Install this module by opening command line and typing `cpan Net::Eboks` (with `sudo` if needed)
 
 * *Development*: you can install the dev version from github. Download/clone the repo, then run
 
@@ -30,6 +31,31 @@ Installation
   make install
 ```
 (or `sudo make install`, depending)
+
+Windows
+-------
+
+* You'll need `perl`. Go to [strawberry perl](http://strawberryperl.com/) and fetch one.
+
+* Install this module by opening command line and typing `cpan Net::Eboks`
+
+* Open command line and run
+
+  `eboks-install-win32`
+
+that will fire up a browser-based install wizard. Click "Install", then login witn eBoks
+credentials and NemID credentials.
+
+* Set up your favourite desktop mail reader so it connects to a POP3 server
+running on server localhost, port 8110. Username and password are your CPR# and
+eBoks mobile password.
+
+* Optionally, if you want to forward the mails, you can choose from numerous
+programs that can forward mails from a POP3 server to another mail account
+[(list of
+examples)](https://blogs.technet.microsoft.com/brucecowper/2005/03/18/pop-connectors-pullers-for-exchange/).
+If you use Outlook it [can do that
+too](https://www.laptopmag.com/articles/how-to-set-up-auto-forwarding-in-outlook-2013).
 
 One-time NemID registration
 ---------------------------
@@ -108,27 +134,6 @@ The problem you might encounter is that the module generates mails as
 originated from `noreply@e-boks.dk` and f.ex. Gmail won't accept that due to
 [SPF](https://en.wikipedia.org/wiki/Sender_Policy_Framework). See if rewriting
 the sender as in `examples/procmail.forward.srs` helps.
-
-Use on Windows desktop
-----------------------
-
-1) Assuming you have installed strawberry perl and the module, open command line and run
-
-  `eboks-install-win32`
-
-that will fire up a browser-based install wizard. Click "Install", then login witn eBoks
-credentials and NemID credentials.
-
-2) Set up your favourite desktop mail reader so it connects to a POP3 server
-running on server localhost, port 8110. Username and password are your CPR# and
-eBoks mobile password.
-
-3) Optionally, if you want to forward the mails, you can choose from numerous
-programs that can forward mails from a POP3 server to another mail account
-[(list of
-examples)](https://blogs.technet.microsoft.com/brucecowper/2005/03/18/pop-connectors-pullers-for-exchange/).
-If you use Outlook it [can do that
-too](https://www.laptopmag.com/articles/how-to-set-up-auto-forwarding-in-outlook-2013).
 
 Read associated eBoks shares
 ----------------------------
