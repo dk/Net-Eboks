@@ -292,9 +292,10 @@ sub xmlget
 
 sub folders
 {
-	my $self = shift;
+	my ($self, $share_id) = @_;
 	return undef unless $self->{uid};
-	$self-> xmlget("$self->{uid}/$self->{share_id}/mail/folders", ['FolderInfo']);
+	$share_id //= $self->{share_id};
+	$self-> xmlget("$self->{uid}/$share_id/mail/folders", ['FolderInfo']);
 }
 
 sub shares
@@ -306,12 +307,13 @@ sub shares
 
 sub messages
 {
-	my ($self, $folder_id, $offset, $limit) = @_;
+	my ($self, $share_id, $folder_id, $offset, $limit) = @_;
 	return undef unless $self->{uid};
+	$share_id //= $self->{share_id};
 	$limit  //= 1;
 	$offset //= 0;
 	$self-> xmlget(
-		"$self->{uid}/$self->{share_id}/mail/folder/$folder_id?skip=$offset&take=$limit", 
+		"$self->{uid}/$share_id/mail/folder/$folder_id?skip=$offset&take=$limit", 
 		[ qw(Messages 0 MessageInfo) ],
 		KeyAttr => 'id'
 	);
@@ -319,10 +321,11 @@ sub messages
 
 sub message
 {
-	my ($self, $folder_id, $message_id) = @_;
+	my ($self, $share_id, $folder_id, $message_id) = @_;
 	return undef unless $self->{uid};
+	$share_id //= $self->{share_id};
 	$self-> xmlget(
-		"$self->{uid}/$self->{share_id}/mail/folder/$folder_id/message/$message_id",
+		"$self->{uid}/$share_id/mail/folder/$folder_id/message/$message_id",
 		[],
 		KeyAttr => 'id'
 	);
@@ -330,9 +333,11 @@ sub message
 
 sub content
 {
-	my ( $self, $folder_id, $content_id ) = @_;
+	my ( $self, $share_id, $folder_id, $content_id ) = @_;
+	return undef unless $self->{uid};
+	$share_id //= $self->{share_id};
 	return 
-		$self-> get( "$self->{uid}/$self->{share_id}/mail/folder/$folder_id/message/$content_id/content" ), sub {
+		$self-> get( "$self->{uid}/$share_id/mail/folder/$folder_id/message/$content_id/content" ), sub {
 			$self-> response( 0, @_ )
 		};
 }
@@ -472,9 +477,9 @@ sub fetch_request
 sub fetch_message_and_attachments
 {
 	my ($self, $message ) = @_;
-
+	
 	return lambda {
-		context $self-> fetch_request( $self->message( $message->{folderId}, $message->{id} ) );
+		context $self-> fetch_request( $self->message( $message->{shareId}, $message->{folderId}, $message->{id} ) );
 	tail {
 		my ($xml, $error) = @_;
 		return ($xml, $error) unless defined $xml;
@@ -486,46 +491,47 @@ sub fetch_message_and_attachments
 			attachments => {},
 		);
 
-		context $self-> fetch_request( $self-> content( $message->{folderId}, $message->{id} ));
+		context $self-> fetch_request( $self-> content( $message->{shareId}, $message->{folderId}, $message->{id} ));
 	tail {
 		my ($body, $error) = @_;
 		return ($body, $error) unless defined $body;
 		$opt{body} = $body;
 	
 		my $att_id = shift @attachments or return \%opt;
-		context $self-> fetch_request( $self-> content( $message->{folderId}, $att_id ));
+		context $self-> fetch_request( $self-> content( $message->{shareId}, $message->{folderId}, $att_id ));
 	tail {
 		my ($att_body, $error) = @_;
 		return ($att_body, $error) unless defined $att_body;
 
 		$opt{attachments}->{$att_id} = $att_body;
 		$att_id = shift @attachments or return \%opt;
-		context $self-> fetch_request( $self-> content( $message->{folderId}, $att_id ));
+		context $self-> fetch_request( $self-> content( $message->{shareId}, message->{folderId}, $att_id ));
 		again;
 	}}}};
 }
 
 sub list_all_messages
 {
-	my ( $self, $folder_id ) = @_;
+	my ( $self, $share_id, $folder_id ) = @_;
 
 	my $offset = 0;
 	my $limit  = 1000;
+	$share_id //= $self->{share_id};
 
 	my %ret;
 
 	return lambda {
-		context $self-> fetch_request( $self-> messages( $folder_id, $offset, $limit ));
+		context $self-> fetch_request( $self-> messages( $share_id, $folder_id, $offset, $limit ));
 	tail {
 		my ($xml, $error) = @_;
 		return ($xml, $error) unless $xml;
 
+		$_->{shareId} = $share_id for values %$xml;
 		%ret = ( %ret, %$xml );
-		#delete $ret{0}; # generates 500 server error
 		return \%ret if keys(%$xml) < $limit;
 
 		$offset += $limit;
-		context $self-> fetch_request( $self-> messages( $folder_id, $offset, $limit ));
+		context $self-> fetch_request( $self-> messages( $share_id, $folder_id, $offset, $limit ));
 		again;
 	}};
 }

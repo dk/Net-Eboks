@@ -82,7 +82,7 @@ if ( $opt{'list-shares'} || $opt{share} ne '0') {
 			$found = 1;
 			print "Found share '$k'\n";
 		}
-		print "* $k\n" if $opt{'list-shares'};
+		print "* $k: $shares->{$k}->{userId}\n" if $opt{'list-shares'};
 		if ( $opt{share} ne '0' && !$found) {
 			die "Cannot find share '$opt{share}'\n";
 		}
@@ -97,7 +97,7 @@ my ($folders, $list, $msg);
 die "error: $error\n" if defined $error;
 
 print "Getting list of messages in Inbox...\n";
-($list, $error) = $e->list_all_messages($folders->{Inbox}->{id})->wait;
+($list, $error) = $e->list_all_messages(undef, $folders->{Inbox}->{id})->wait;
 die "error: $error\n" if defined $error;
 my @msgids = sort keys %$list;
 

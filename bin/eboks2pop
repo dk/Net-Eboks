@@ -137,20 +137,18 @@ sub remotefail($)
 	fail("e-boks.dk says: $_[0]");
 }
 
-sub want_list
+sub list_share
 {
-	my $session = shift;
+	my ($session, $share) = (shift, shift);
 	return lambda {
-		return 1 if $session->{list};
-
-		context $session->{obj}->fetch_request( $session->{obj}->folders );
+		context $session->{obj}->fetch_request( $session->{obj}->folders($share) );
 	tail {
 		my ( $folders, $error ) = @_;
 		$session->{error} = $error;
 		return 0 unless $folders;
 
 		$session->{folder} = $folders->{Inbox};
-		context $session->{obj}->list_all_messages($session->{folder}->{id});
+		context $session->{obj}->list_all_messages($share, $session->{folder}->{id});
 	tail {
 		my ( $list, $error ) = @_;
 		unless ($list) {
@@ -158,10 +156,45 @@ sub want_list
 			return 0;
 		}
 
-		$session->{list} = $list;
-		$session->{msgs} = scalar keys %$list;
-		$session->{keys} = [ sort keys %$list ];
+		$session->{msgs} += scalar keys %$list;
+		push @{$session->{keys}}, map { $list->{$_} } sort keys %$list;
 		return 1;
+	}}};
+}
+
+sub want_list
+{
+	my $session = shift;
+	return lambda {
+		return 1 if $session->{list};
+
+		$session->{keys} = [];
+		$session->{msgs} = 0;
+		if ( $session->{all_shares}) {
+			context $session->{obj}->fetch_request( $session->{obj}->shares );
+		} else {
+			context lambda {};
+		}
+	tail {
+		my ( $shares, $error ) = @_;
+		my @shares = ($session->{share});
+		if ( $session->{all_shares}) {
+			$session->{error} = $error;
+			return 0 unless $shares;
+			for my $k ( %$shares ) {
+				next if $k eq 'name';
+				next unless defined $shares->{$k}->{userId};
+				push @shares, $shares->{$k}->{userId};
+			}
+			@shares = sort @shares;
+		}
+
+		context list_share( $session, shift @shares );
+	tail {
+		return 0 unless shift;
+		return $session->{list} = 1 unless @shares;
+		context list_share( $session, shift @shares );
+		again;
 	}}};
 }
 
@@ -177,9 +210,14 @@ sub pop3_user
 {
 	my ($session, $user) = @_;
 	return fail("already authorized") if exists $session->{user};
-	return fail("bad username: must be CPR, f.ex. 205674-5675") 
-		unless ($user//'') =~ /^(\d{6})\-?(\d{4})$/;
+	return fail("bad username: must be CPR, f.ex. 205674-5675[:SHARE]") 
+		unless ($user//'') =~ /^(\d{6})\-?(\d{4})(?::(\d+|\*))?$/;
 	$session->{user} = $1 . $2;
+	if (($3 // '') eq '*') {
+		$session->{all_shares} = 1;
+	} else {
+		$session->{share} = $3;
+	}
 	return ok("hello");
 }
 
@@ -189,11 +227,14 @@ sub pop3_pass
 	return fail("already authorized") if exists $session->{pass};
 	$session->{pass} = $pass;
 
-	$session->{obj}  = Net::Eboks->new(
+	my %creds = (
 		cpr        => $session->{user},
 		password   => $session->{pass},
 		home       => $opt{keys},
 	);
+	$creds{share_id} = $session->{share} if defined $session->{share};
+	$session->{obj}  = Net::Eboks->new(%creds);
+	$session->{share} //= $session->{obj}->{share_id};
 	return lambda {
 		debug("[$session->{hostname}] login");
 		context $session->{obj}->fetch_request($session->{obj}->login_nemid);
@@ -223,7 +264,7 @@ sub pop3_stat
 		tail {
 			return remotefail($session->{error}) unless shift;
 			my $sum = 0;
-			$sum += $_->{size} for values %{$session->{list}};
+			$sum += $_->{size} for @{ $session->{keys} };
 			return ok($session->{msgs} . ' ' . $sum);
 		}
 	};
@@ -240,33 +281,15 @@ sub pop3_list
 		if ( defined $id) {
 			return fail("bad command") unless $id =~ /^\d+$/;
 			return fail("no such msg") if $id <= 0 || $id > $session->{msgs};
-			my $msg = $session->{keys}->[$id - 1];
-			return ok($id . ' '. $session->{list}->{$msg}->{size});
+			return ok($id . ' '. $session->{keys}->[$id-1]->{size});
 		} else {
-			return multi("$session->{msgs} messages", (map { "$_ " . $session->{list}->{$session->{keys}->[$_-1]}->{size} } (1..$session->{msgs})));
+			return multi( "$session->{msgs} messages", 
+				(map { "$_ " . $session->{keys}->[$_-1]->{size} } (1..$session->{msgs})));
 		}
 	}}
 }
 
-sub pop3_uidl
-{
-	my ($session, $id) = @_;
-	return fail("not authorized") unless $session->{authorized};
-
-	return lambda {
-		context want_list($session);
-	tail { 
-		return remotefail($session->{error}) unless shift;
-		if ( defined $id) {
-			return fail("bad command") unless $id =~ /^\d+$/;
-			return fail("no such msg") if $id <= 0 || $id > $session->{msgs};
-			return ok($id . ' ' . $session->{keys}->[$id-1]);
-		} else {
-			return multi("$session->{msgs} messages", (map { "$_ " . $session->{keys}->[$_-1] } (1..$session->{msgs})));
-		}
-	}}
-}
-
+sub pop3_uidl { goto &pop3_list }
 sub pop3_noop { ok('') }
 sub pop3_dele { ok("not deleted, actually") }
 sub pop3_rset { fail("not implemented") }
@@ -282,7 +305,7 @@ sub pop3_retr
 	tail {
 		return remotefail($session->{error}) unless shift;
 		return fail("bad argument") if $id > $session->{msgs};
-		context $session->{obj}->fetch_message_and_attachments( $session->{list}->{$session->{keys}->[$id-1]} );
+		context $session->{obj}->fetch_message_and_attachments( $session->{keys}->[$id - 1] );
 	tail {
 		my $msg = shift;
 		return remotefail(shift) unless $msg;
@@ -301,7 +324,7 @@ sub pop3_top
 	tail {
 		return remotefail(shift) unless shift;
 		return fail("bad argument") if $id > $session->{msgs};
-		context $session->{obj}->fetch_message_and_attachments( $session->{list}->{$session->{keys}->[$id-1]} );
+		context $session->{obj}->fetch_message_and_attachments( $session->{keys}->[$id - 1] );
 	tail {
 		my $msg = shift;
 		return remotefail($session->{error}) unless $msg;
