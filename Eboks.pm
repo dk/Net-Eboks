@@ -421,6 +421,7 @@ sub assemble_mail
 		Charset       => 'utf-8',
 		Encoding      => 'quoted-printable',
 		'X-Net-Eboks' => "v/$VERSION",
+		'X-Net-Eboks-ShareId' => $opt{share_id} // '0',
 	);
 
 	my @attachments;
@@ -488,6 +489,7 @@ sub fetch_message_and_attachments
 		my @attachments = keys %$attachments;
 		my %opt = ( 
 			message     => $xml,
+			share_id    => $message->{shareId},
 			attachments => {},
 		);
 
