@@ -20,7 +20,7 @@ Installation
 
 * For windows, you'll need `perl`. Go to [strawberry perl](http://strawberryperl.com/) and fetch one.
 
-* Install this module by opening command line and typing `cpan Net::Eboks`.
+* Install this module by opening command line and typing `cpan Net::Eboks` (with `sudo` if you need it system-wide)
 
 * *Development*: you can install the dev version from github. Download/clone the repo, then run
 
@@ -29,7 +29,7 @@ Installation
   make
   make install
 ```
-(or sudo make install, depending)
+(or `sudo make install`, depending)
 
 One-time NemID registration
 ---------------------------
