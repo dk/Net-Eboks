@@ -121,6 +121,20 @@ examples)](https://blogs.technet.microsoft.com/brucecowper/2005/03/18/pop-connec
 If you use Outlook it [can do that
 too](https://www.laptopmag.com/articles/how-to-set-up-auto-forwarding-in-outlook-2013).
 
+Read associated eBoks shares
+----------------------------
 
+If you have associated mailboxes, that companies open for you, you can access them in two ways.
+
+1) Download them all, by using CPR in a form of 123456-7890:\* . The module
+will interpret all shared folders as one huge inbox. For ease of filtering
+there is a mail header `X-Net-Eboks-Shareid` that contains numeric identifier
+of the shared folder.
+
+2) Download each of them separately, by using CPR in a form of
+123456-7890:SHAREID where `SHAREID` is a numeric identifier of the shared
+folder. Get it by running `eboks-dump -l`.
+
+In both cases the password, authentication etc is the same as if you use only your private eBoks.
 
 Enjoy!
