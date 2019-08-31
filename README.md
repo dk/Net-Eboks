@@ -22,6 +22,12 @@ Installation
 
 * Install this module by opening command line and typing `cpan Net::Eboks`.
 
+* *Development*: you can install the dev version from github. Download/clone the repo, then run
+
+`  perl Makefile.PL
+   make
+   make install` (or sudo make install, depending)
+
 One-time NemID registration
 ---------------------------
 
