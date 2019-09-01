@@ -1,4 +1,4 @@
-package Net::Eboks;
+package Net::Eboks; 
 
 use 5.010;
 use strict;
@@ -539,8 +539,6 @@ sub list_all_messages
 }
 
 1;
-
-__DATA__
 
 =pod
 
