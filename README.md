@@ -23,15 +23,6 @@ Unix/Linux
 
 * Install this module by opening command line and typing `cpan Net::Eboks` (with `sudo` if needed)
 
-* *Development*: you can install the dev version from github. Download/clone the repo, then run
-
-```
-  perl Makefile.PL
-  make
-  make install
-```
-(or `sudo make install`, depending)
-
 Windows
 -------
 
@@ -56,6 +47,21 @@ programs that can forward mails from a POP3 server to another mail account
 examples)](https://blogs.technet.microsoft.com/brucecowper/2005/03/18/pop-connectors-pullers-for-exchange/).
 If you use Outlook it [can do that
 too](https://www.laptopmag.com/articles/how-to-set-up-auto-forwarding-in-outlook-2013).
+
+Upgrading
+---------
+
+* Stop `eboks2pop` if running.
+
+* Install the dev version from github. Download/clone the repo, then run
+
+```
+  perl Makefile.PL
+  make
+  make install
+```
+(or `sudo make install`, depending); `gmake` instead of `make` for Windows.
+
 
 One-time NemID registration
 ---------------------------
