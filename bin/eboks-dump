@@ -87,9 +87,9 @@ if ( $opt{'list-shares'} || $opt{share} ne '0') {
 			print "Found share '$k'\n";
 		}
 		print "* $k: $shares->{$k}->{userId}\n" if $opt{'list-shares'};
-		if ( $opt{share} ne '0' && !$found) {
-			die "Cannot find share '$opt{share}'\n";
-		}
+	}
+	if ( $opt{share} ne '0' && !$found) {
+		die "Cannot find share '$opt{share}'\n";
 	}
 	exit if $opt{'list-shares'};
 }
