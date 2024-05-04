@@ -82,6 +82,13 @@ Quit the setup.
 
 * Linux: restart `eboks2pop` using your system tools.
 
+Upgrading from NemID to MitID
+-----------------------------
+
+Versions v0.08 and before used NemID authentication, which is deprecated now
+and doesn't work anymore. You don't need to do another round of MitID
+authentication, as the hardcoded RSA keypair can still be reused.
+
 One-time MitID authentication
 -----------------------------
 
