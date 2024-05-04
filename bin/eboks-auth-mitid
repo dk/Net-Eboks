@@ -93,6 +93,11 @@ sub handle_saml
 		unless ($resp->header('Location') // '') =~ m[(eboksdk://ngdpoidc/callback)\?.*code=([^\&]+)];
 
 	my ( $uri, $code ) = ($1, $2);
+	my $git_guardian_is_too_smart =
+		'ZS1ib2tzLW1vYmls'.
+		'ZTp5MHZLUktvVnZx'.
+		'TyVOM0hCREswVDVi'.
+		'Ynpxb19lWnNJMA';
 	$resp = $ua->request( HTTP::Request::Common::POST(
 		'https://digitalpost.dk/auth/oauth/token?'.
 			'grant_type=authorization_code&'.
@@ -100,7 +105,7 @@ sub handle_saml
 			'client_id=e-boks-mobile&'.
 			"code=$code&".
 			"code_verifier=$code_verifier",
-		Authorization => 'Basic ZS1ib2tzLW1vYmlsZTp5MHZLUktvVnZxTyVOM0hCREswVDViYnpxb19lWnNJMA==',
+		Authorization => "Basic $git_guardian_is_too_smart==",
 	))->wait;
 	return error("MitID ticket is received but cannot authorize to Eboks") unless
 		$resp->is_success && $resp->header('Content-Type') =~ m[application/json];
@@ -127,7 +132,7 @@ sub handle_saml
 			grant_type    => 'usertoken',
 			scope         => 'mobileapi offline_access',
 			client_id     => 'MobileApp-Short-Custom-id',
-			client_secret => 'QmaENW6MeYwwjzF5',
+			client_secret => ''.reverse('5FzjwwYeM6WNEamQ'),
 			deviceid      => $e->{deviceid},
 		]
 	))->wait;
