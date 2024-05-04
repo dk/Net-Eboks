@@ -6,14 +6,9 @@ This is perl interface for http://eboks.dk/, Danish national email system.
 Included a simple POP server for proxying e-boks for read-only mail access
 and a simple downloader.
 
-You shall need your CPR# and password.
-You can get the password from the e-Boks website. 
-Here is a
-[video-guide](http://www.e-boks.dk/help.aspx?pageid=db5a89a1-8530-418a-90e9-ff7f0713784a)
-on how to get it (in Danish).
-
-For the POP3 login, the username is be your CPR code, such as f.ex: 0123456-7890.
-The password is your mobile pincode.
+You shall need your CPR# and password.  You can get the password from the
+e-Boks website.  For the POP3 login, the username is be your CPR code, such as
+f.ex: 0123456-7890.  The password is your mobile pincode.
 
 How it works
 ============
