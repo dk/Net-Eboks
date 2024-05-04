@@ -1,0 +1,325 @@
+#!perl
+use strict;
+use warnings;
+
+BEGIN { $ENV{IO_LAMBDA_DEBUG} = 'http=2' }
+package main;
+use v5.26;
+use IO::Socket::INET;
+use IO::Lambda v1.33 ':all';
+use IO::Lambda::HTTP::Client qw(http_request);
+use IO::Lambda::HTTP::Server;
+use IO::Lambda::HTTP::UserAgent;
+use URI;
+use URI::QueryParam;
+use URI::Escape;
+use HTTP::Request;
+use HTTP::Request::Common;
+use HTTP::Response;
+use MIME::Base64 qw(encode_base64url);
+use Digest::SHA qw(sha256);
+use JSON::XS qw(decode_json encode_json);
+use Net::Eboks;
+
+
+$|++;
+
+my $win32_install = (( $ARGV[0] // '' ) eq '--win32-install');
+my $port = 9999;
+my ($server, $error);
+my ($state, $code_challenge, $code_verifier, $nonce);
+my $ua = IO::Lambda::HTTP::UserAgent->new;
+my $e  = Net::Eboks->new;
+
+sub socket_check
+{
+	return IO::Socket::INET-> new(
+		PeerAddr => '127.0.0.1',
+		PeerPort => shift,
+		Proto    => 'tcp',
+	);
+}
+
+sub randstr($) { encode_base64url(join('', map { chr rand(255) } 1..$_[0])) }
+sub init_oauth
+{
+	$state          = randstr(23);
+	$nonce          = randstr(93);
+	$code_verifier  = randstr(93);
+	$code_challenge = encode_base64url(sha256($code_verifier));
+}
+
+sub mailcheck { '<p><a href="/testmail">Test MitDK login'.(($e->{cpr} =~ /^0+$/) ? '' : " for CPR $e->{cpr}").'</a>'  }
+sub quit      { '<p><a href="/abort">Quit the wizard</a><p>' }
+sub main      { '<p><a href="/">Go back to the start</a><p>' }
+
+sub html($)
+{
+	my $html = $_[0];
+	$html = "<html><body>$html</body></html>";
+	HTTP::Response->new( 200, "OK", [
+		'Content-Type'   => 'text/html',
+		'Content-Length' => length($html),
+	], $html)
+}
+
+sub h2($)      { html "<h2>$_[0]</h2>" . main . quit }
+sub h2x($$)    { html "<h2>$_[0]</h2><p>$_[1]" . main . quit } 
+sub error($)   { h2x( 'Error', $_[0] ) }
+
+sub handle_saml
+{
+	my $resp = shift;
+
+	return error "Cannot get MitID ticket's SAMLResponse" unless $resp->content =~ /name="(SAMLResponse)" value="(.*?)"/;
+	my $saml = "$1=" . uri_escape($2);
+	return error "Cannot get MitID ticket's RelayState" unless $resp->content =~ /name="(RelayState)" value="(.*?)"/;
+	my $rest = "$1=" . uri_escape($2);
+
+	$resp = $ua->request( HTTP::Request::Common::POST(
+		'https://gateway.digitalpost.dk/auth/s9/e-boks-nemlogin/ssoack',
+		Content => "$rest&$saml",
+	))->wait;
+	return error("MitID ticket is received but cannot login. Did you register at <a href='https://mit.dk'>Digital Post</a>?")
+		unless ($resp->header('Location') // '') =~ m[(eboksdk://ngdpoidc/callback)\?.*code=([^\&]+)];
+
+	my ( $uri, $code ) = ($1, $2);
+	$resp = $ua->request( HTTP::Request::Common::POST(
+		'https://digitalpost.dk/auth/oauth/token?'.
+			'grant_type=authorization_code&'.
+			"redirect_uri=$uri&".
+			'client_id=e-boks-mobile&'.
+			"code=$code&".
+			"code_verifier=$code_verifier",
+		Authorization => 'Basic ZS1ib2tzLW1vYmlsZTp5MHZLUktvVnZxTyVOM0hCREswVDViYnpxb19lWnNJMA==',
+	))->wait;
+	return error("MitID ticket is received but cannot authorize to Eboks") unless
+		$resp->is_success && $resp->header('Content-Type') =~ m[application/json];
+	my $json;
+	eval { $json = decode_json( $resp->content ); };
+	return error("Got bad response from Digitalpost") unless $json && $json->{access_token};
+
+	my $bearer = $json->{access_token};
+	$resp = $ua->request( HTTP::Request::Common::POST(
+		'https://digitalpostproxy.e-boks.dk/loginservice/v2/connect/usertoken',
+		'X-Operation-ID' => 'LoginService_UserToken',
+		Authorization    => "Bearer $bearer",
+		'Content-Type'   => 'application/json-patch+json',
+	))->wait;
+	return error("MitID ticket is received but cannot get login token") unless
+		$resp->is_success && $resp->header('Content-Type') =~ m[application/json];
+	undef $json;
+	eval { $json = decode_json( $resp->content ); };
+	return error("Got bad response from login service") unless $json && $json->{userToken};
+
+	$resp = $ua->request( HTTP::Request::Common::POST(
+		'https://oauth-dk.e-boks.com/1/connect/token', [
+			usertoken     => $json->{userToken},
+			grant_type    => 'usertoken',
+			scope         => 'mobileapi offline_access',
+			client_id     => 'MobileApp-Short-Custom-id',
+			client_secret => 'QmaENW6MeYwwjzF5',
+			deviceid      => $e->{deviceid},
+		]
+	))->wait;
+	return error("MitID ticket is received but cannot get user token") unless
+		$resp->is_success && $resp->header('Content-Type') =~ m[application/json];
+	undef $json;
+	eval { $json = decode_json( $resp->content ); };
+	return error("Got bad response from Eboks/oauth") unless $json && $json->{access_token};
+	$bearer = $json->{access_token};
+
+	$resp = $ua->request( HTTP::Request::Common::POST(
+		'https://mobile-api-dk.e-boks.com/2/user/mobileaccess/password/verify',
+		[  password   => $e->{password} ],
+		Authorization => "Bearer $bearer",
+	))->wait;
+	unless ($resp->is_success) {
+		my $msg = "Password verification failed";
+		if ( $resp->header('Content-Type') =~ m[application/json] ) {
+			undef $json;
+			eval { $json = decode_json( $resp->content ); };
+			$msg .= ": " . $json->{description}->{text} if $json && ref($json->{description});
+		}
+		return error($msg);
+	}
+
+	$resp = $ua->request( HTTP::Request::Common::GET(
+		'https://mobile-api-dk.e-boks.com/2/user/profile',
+		Authorization => "Bearer $bearer",
+	))->wait;
+	return error("Cannot get user profile") unless
+		$resp->is_success && $resp->header('Content-Type') =~ m[application/json];
+	undef $json;
+	eval { $json = decode_json( $resp->content ); };
+	return error("Bad user profile response") unless $json && ref($json);
+	$e->set(cpr => $json->{identity});
+
+	$json = encode_json({
+		id   => $e->{deviceid},
+		key  => $e->public_key,
+		name => 'net-eboks2',
+		os   => $^O,
+	});
+	$resp = $ua->request( HTTP::Request::Common::PUT(
+		'https://mobile-api-dk.e-boks.com/2/user/current/device',
+		Authorization    => "Bearer $bearer",
+		'Content-Type'   => 'application/json',
+		'Content-Length' => length($json),
+		Content          => $json,
+	))->wait;
+	return error("Cannot upload public key to Eboks") unless $resp->code eq '204';
+
+	return h2x('Device is activated!', 'Now you can use the module with your credentials.' . mailcheck);
+}
+
+sub params
+{
+	map {
+		m/^(\w+)=(.*)$/;
+		my ($k,$v) = ($1,$2);
+		$v =~ s/%(..)/chr(hex($1))/ge;
+		($k, $v);
+	} split '&', $_[0];
+}
+
+my %routes;
+%routes = (
+	'/auth' => sub {
+
+		html <<INIT . ($win32_install ? main : '' ) . mailcheck . quit;
+<h2>Welcome to the E-boks/MitID authenticator setup</h2>
+
+<form action="/step2" method="POST">
+
+<p> On the next page you will be presented
+the standard MitID dialog, that you need to login as you usually do.<br>
+If you are going to authorize the login with your MitID app, make sure that
+the requestor is "Mit-DK login".
+
+Enter the E-boks password: <input type="password" name="password">
+
+<p>
+<input type="submit" value="MitID Login">
+</form>
+INIT
+	},
+
+	'/step2' => sub {
+		my $req = shift;
+		my %param = params($req->content);
+		$e->set( password => $param{password} );
+
+		init_oauth();
+		$ua->cookie_jar->clear;
+		return lambda {
+			context $ua->request( HTTP::Request->new(
+				GET => 'https://gateway.digitalpost.dk/auth/oauth/authorize?'.
+					'idp=nemloginEboksRealm&'.
+					'client_id=e-boks-mobile&'.
+					'response_type=code&'.
+					'scope=openid&'.
+					"state=$state&".
+					"code_challenge=$code_challenge&".
+					'code_challenge_method=S256&'.
+					'response_mode=query&'.
+					"nonce=$nonce&".
+					'redirect_uri=eboksdk://ngdpoidc/callback&'.
+					'deviceName=eboks2-authenticator-perl&'.
+					"deviceId=$e->{deviceid}"
+				),
+				max_redirect => 20,
+			);
+			tail {
+				my $resp = shift;
+				if ( ref $resp ) {
+					$resp->header( 'Access-Control-Allow-Origin'  => '*');
+					$resp->header( 'Cross-Origin-Resource-Policy' => 'cross-origin');
+				}
+				return $resp;
+			};
+		};
+	},
+
+	# case with private only
+	'/mitid' => sub {
+		my $req = shift;
+		$req->uri("https://nemlog-in.mitid.dk/login/mitid");
+		$req->header( Referer => 'https://nemlog-in.mitid.dk/login/mitid');
+		$req->header( Host    => 'nemlog-in.mitid.dk');
+		$req->header( Origin  => 'https://nemlog-in.mitid.dk');
+		$req->header( 'Accept-Encoding' => 'identity');
+		$req->headers->remove_header('Cookie');
+		my $resp = $ua->request($req)->wait;
+		return $resp unless $resp->is_success;
+		return $resp if $resp->request->uri->path =~ /loginoption$/;
+		return handle_saml($resp);
+	},
+
+	# case with sub-select (private and firma(s))
+	'/loginoption' => sub  {
+		my $req = shift;
+		$req->uri("https://nemlog-in.mitid.dk".$req->uri);
+		$req->header( Host    => 'nemlog-in.mitid.dk');
+		$req->header( Origin  => 'https://nemlog-in.mitid.dk');
+		$req->header( Referer => 'https://nemlog-in.mitid.dk/loginoption');
+		$req->header( 'Accept-Encoding' => 'identity');
+		$req->headers->remove_header('Cookie');
+		my $resp = $ua->request($req)->wait;
+		return $resp unless $resp->is_success;
+		return handle_saml($resp);
+	},
+
+	'/testmail' => sub {
+		return error 'Not logged in' unless length $e->{password};
+		my ($uname, $error) = $e->fetch_request($e->login_nemid)->wait;
+		return error $error unless defined $uname;
+		my ($folders, $error2) = $e->fetch_request( $e->folders )->wait;
+		return error $error2 unless $folders;
+		$server->shutdown;
+		return html "<h2>$uname - All okay</h2><p>".
+			'These are your e-Boks mail folders, retrieved from the remote server:<p>'.
+			join('<br>', map { "<i>$_</i>" } sort keys %$folders) . '<p>'.
+			'Looks like you have it up and running. You may close the page now';
+	},
+
+	'/abort' => sub {
+		$server->shutdown;
+		return html '<h2>Setup finished.</h2>';
+	},
+);
+
+$routes{'/'} = $win32_install ? $routes{'/win32_install'} : $routes{'/auth'};
+
+($server, $error) = http_server {
+	my $req = shift;
+	if ( my $cb = $routes{$req->uri}) {
+		return $cb->($req);
+	} else {
+		$req->uri("https://nemlog-in.mitid.dk" . $req->uri->path);
+		$req->header( Host    => 'nemlog-in.mitid.dk');
+		if ( my $origin = $req->header('Origin')) {
+			$origin =~ s[http://localhost:9999][https://nemlog-in.mitid.dk];
+			$req->header( Origin => $origin);
+		}
+		if ( my $referer = $req->header('Referer')) {
+			$referer =~ s[http://localhost:9999/step2][https://nemlog-in.mitid.dk/login/mitid];
+			$referer =~ s[http://localhost:9999/][https://nemlog-in.mitid.dk/login/mitid];
+			$req->header( Referer => $referer);
+		}
+		$req->headers->remove_header('Cookie');
+		$req->header( 'Accept-Encoding' => 'identity');
+		return $ua->request($req);
+	}
+} "localhost:$port", timeout => 10;
+die $error unless $server;
+
+if ( $win32_install ) {
+	require Win32API::File;
+	import Win32API::File qw(GetOsFHandle SetHandleInformation HANDLE_FLAG_INHERIT);
+	warn $^E unless SetHandleInformation(GetOsFHandle($server->{socket}), HANDLE_FLAG_INHERIT(), 0);
+}
+
+print "Open a browser and go to this address:\n";
+print "\n   http://localhost:$port/\n\n";
+$server->wait;

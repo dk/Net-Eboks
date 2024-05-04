@@ -16,7 +16,7 @@ use IO::Lambda qw(:all);
 use IO::Lambda::HTTP qw(http_request);
 use Crypt::OpenSSL::RSA;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 sub new
 {
@@ -39,11 +39,15 @@ sub new
 		share_id   => '0',
 		conn_cache => LWP::ConnCache->new,
 
+		from       => $ENV{MAILFROM} // 'noreply@e-boks.dk',
+
 		%opts,
 	}, $class;
 
 	return $self;
 }
+
+sub set { $_[0]->{$_[1]} = $_[2] }
 
 sub response
 {
@@ -200,12 +204,11 @@ XML
 	};
 }
 
-sub session_activate
+sub public_key
 {
-	my ($self, $ticket) = @_;
 
 # 	openssl rsa -in id_rsa -outform PEM -pubout -out id_rsa.pub
-	my $pubkey = join '', grep {!/^--/} split /\n/, <<'PUB';
+	return join '', grep {!/^--/} split /\n/, <<'PUB';
 -----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2VUahnbWKIY4rn8jEthY
 9M2BoMIHoNQlY4YUL9pV+MpSKyy9MjVKV6h8ERnj+1wxUJDR3ZJimYnvcruGqlSR
@@ -216,7 +219,13 @@ IEfbbzX/rK30FFVurFG0JAE9T7z7b0S5RkGFx4GgKGRoFRd8HE+UptBa4JyvmvA3
 MQIDAQAB
 -----END PUBLIC KEY-----
 PUB
+}
 
+sub session_activate
+{
+	my ($self, $ticket) = @_;
+
+	my $pubkey  = $self->public_key;
 	my $authstr = join(',', map { "$_=\"$self->{$_}\"" } qw(deviceid nonce sessionid response));
 	my $content = <<XML;
 <?xml version="1.0" encoding="utf-8"?>
@@ -413,7 +422,7 @@ sub assemble_mail
 	$received = $date->strftime('%a, %d %b %Y %H:%M:%S %z');
 
 	my $mail = MIME::Entity->build(
-		From          => $opt{from}    // ( safe_encode('MIME-Q', $sender) . ' <noreply@e-boks.dk>' ) ,
+		From          => $opt{from}    // ( safe_encode('MIME-Q', $sender) . " <$self->{from}>" ) ,
 		To            => $opt{to}      // ( safe_encode('MIME-Q', $self->{uname}) . ' <' . ( $ENV{USER} // 'you' ) . '@localhost>' ),
 		Subject       => $opt{subject} // safe_encode('MIME-Header', $msg->{name}),
 		Data          => $opt{data}    // encode('utf-8', "Mail from $sender"),

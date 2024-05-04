@@ -11,6 +11,7 @@ my %opt = (
 	'list-shares' => 0,
 	'list-messages' => 0,
 	output     => 'eboks.mbox',
+	n          => undef,
 	help       => 0,
 );
 
@@ -23,11 +24,12 @@ sub usage
 $0
 
    --cpr           - CPR code, 0123456-7890
-   --pincode       - PIN code
+   --password      - Password
    --share         - Share name
    --list-shares   - Display list of available shares (0 is default)
    --list-messages - Display list of available messages
    --output        - output mail box ( $opt{output} )
+   -n NUMBER       - dump only message NUMBER
    --help 
 
 USAGE
@@ -37,12 +39,13 @@ USAGE
 GetOptions(\%opt,
 	"help|h",
 	"cpr|c=s",
-	"pincode|p=s",
+	"password|p=s",
 	"share|s=s",
 	"messages|g=s",
 	"list-shares|l",
 	"list-messages|m",
 	"output|o=s",
+	"n=i",
 ) or usage;
 
 $opt{help} and usage();
@@ -60,12 +63,12 @@ sub fetch
 	print "\n";
 }
 
-fetch($_) for qw(cpr pincode);
+fetch($_) for qw(cpr password);
 $opt{cpr} =~ s/\-//g;
 
 my $e = Net::Eboks->new(
 	cpr        => $opt{cpr},
-	password   => $opt{pincode},
+	password   => $opt{password},
 );
 
 my ($uname, $shares, $error);
@@ -113,6 +116,7 @@ unless ( $opt{'list-messages'} ) {
 my $n = 0;
 for my $msgid ( @msgids ) {
 	$n++;
+	next if defined $opt{n} && $opt{n} != $n;
 	my $m = $list->{$msgid};
 	print "Fetching #$n: ", $e->filename( $m ), " from $m->{receivedDateTime}...\n";
 	next if $opt{'list-messages'};

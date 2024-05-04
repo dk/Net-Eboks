@@ -6,9 +6,10 @@ Makefile.PL
 Eboks.pm
 bin/eboks2pop
 bin/eboks-dump
-bin/eboks-authenticate
+bin/eboks-auth-mitid
 bin/eboks-install-win32
 t/01.t
+example/chrome.bat
 example/fetchmailrc
 example/procmailrc.forward.simple
 example/procmailrc.forward.srs

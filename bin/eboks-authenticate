@@ -182,6 +182,10 @@ if ( $win32_install ) {
 	warn $^E unless SetHandleInformation(GetOsFHandle($server->{socket}), HANDLE_FLAG_INHERIT(), 0);
 }
 
+print "\n";
+print "** WARNING: NemID is deprecated, this wouldn't work! ***\n";
+print "**              Use eboks-auth-mitid instead         ***\n";
+print "\n";
 print "Open a browser and go to this address:\n";
 print "\n   http://localhost:$port/\n\n";
 $server->wait;

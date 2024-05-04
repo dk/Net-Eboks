@@ -15,6 +15,25 @@ on how to get it (in Danish).
 For the POP3 login, the username is be your CPR code, such as f.ex: 0123456-7890.
 The password is your mobile pincode.
 
+How it works
+============
+
+The module need to be authenticated using MitID as all other clients to the
+danish services.  The only difference is that this module is not an official
+client, (I'd love to make it official but I guess that costs an arm and a leg,
+plus bureaucratic hassles, so this is not planned so far). You would need to
+run the authentication (see below) where you would provide your Eboks password
+and confirm the Eboks login using your MitID app. After this is done, the
+module stores the RSA public key on the eboks server, and this is the same
+hardcoded public key used for all accesses. You may supply your own RSA keypair
+by generating it yourself and inserting it in the code.
+
+After the public key is uploaded, the module can login and fetch mails using
+the public key authentication. It would still need to ask for your CPR and
+Eboks password though. You most probably want to either read these mails on the
+same machine that fetches them, or forward them to your email. See below how to
+do that.
+
 Installation
 ============
 
@@ -35,7 +54,7 @@ Windows
   `eboks-install-win32`
 
 that will fire up a browser-based install wizard. Click "Install", then login witn eBoks
-credentials and NemID credentials.
+password and MitID.
 
 * Set up your favourite desktop mail reader so it connects to a POP3 server
 running on server localhost, port 8110. Username and password are your CPR# and
@@ -62,31 +81,47 @@ Upgrading
 ```
 (or `sudo make install`, depending); `gmake` instead of `make` for Windows.
 
+One-time MitID authentication
+-----------------------------
 
-One-time NemID registration
----------------------------
+For each user, you will need to go through the initial authentication, once.
+`eboks-auth-mitid` will start a small webserver on `http://localhost:9999/`,
+where you will need to connect to with a browser.  There, it will ask for your
+password (from e-boks Menu/Mobiladgang) and will try to show a standard MitID
+window. You will need to confirm the login with your MitID app.  If that works,
+the script will register the pseudo device Net-Eboks for future logins (you
+would see the device entry in Menu/Mobiladgang/Aktiverede enheder; you can also
+disable it from there).
 
-For each user, you will need to go through one-time registration through you
-personal NemID signature. `eboks-authenticate` will start a small webserver on
-`http://localhost:9999/`, where you will need to connect to with a browser.
-There, it will ask for your CPR, your password (from e-boks Menu/Mobiladgang),
-and will try to show a standard NemID window. You will need to log in there, in
-the way you usually do, using either one-time pads or the NemID app, and then
-confirm the request from eBoks. If that works, the script will register the
-pseudo device Net-Eboks for future logins (you would see the device entry in
-Menu/Mobiladgang/Aktiverede enheder; you can also disable it from there).
+**Important**: The authentication step proxies some requests and that doesn't
+go well with the [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
+policy.  That's why if you try to start the authentication in a normal browser
+window, you will not be able to see the MitID login window, but get an error
+instead.
 
-This step should be done only once per user, not per installation - after the
-registration you can access eBoks from any server that has this module installed.
+To sidestep that, the authentication must be done with some browser security
+settings lowered. You may want to use a standalone instance of a browser so it
+doesn't mess with your main security settings.
+
+* Chrome on Windows: create a folder f.ex `C:\chrome.nosec` and run
+`"C:\Program Files\Google\Chrome\Application\chrome.exe" --disable-web-security --user-data-dir="C:\chrome.nosec"`
+(also see `examples/chrome.bat`)
+
+* Chrome on Linux: basically same, `mkdir /tmp/chrome` and `chrome --disable-web-security --user-data-dir=/tmp/chrome`
+
+* Firefox: apparently it cannot do this, but some extentions claim that they
+can (simple-modify-headers etc). I didn't succeed to setup a single one so if
+you know how to hack Firefox to add `Access-Control-Allow-Origin: *` to all
+responses, kindly ping me back.
+
+* Other browsers: I didn't care but again patches to this text are welcome.
+
+The authentication step should be done only once per user, not per installation
+- after the registration you can access eBoks from any server that has this
+module installed.
 
 **Security note**: *No data is stored on the computer in the process, the only record is stored
 on the eBoks server itself*.
-
-Also, there are no specific security concerns others than the usual suspects
-when one logs into NemID. To be extra paranoid though, use only two-factor
-authentication through NemID app, not through one-time pads, as the app shows
-who is the issuer of the login request when asking for its confirmation.  Make
-sure the requestor is eBoks, not your bank :)
 
 Operations
 ==========
@@ -138,8 +173,10 @@ setup is basically same as in previous section, but see
 
 The problem you might encounter is that the module generates mails as
 originated from `noreply@e-boks.dk` and f.ex. Gmail won't accept that due to
-[SPF](https://en.wikipedia.org/wiki/Sender_Policy_Framework). See if rewriting
-the sender as in `examples/procmail.forward.srs` helps.
+[SPF](https://en.wikipedia.org/wiki/Sender_Policy_Framework). You can change
+that I<From:> address to another by setting the environment variable MAILFROM.
+Alternatively, see if rewriting the sender as in
+`examples/procmail.forward.srs` helps.
 
 Read associated eBoks shares
 ----------------------------
@@ -147,7 +184,7 @@ Read associated eBoks shares
 If you have associated mailboxes, that companies open for you, you can access them in two ways.
 
 1) Download them all, by using CPR in a form of 123456-7890:\* . The module
-will interpret all shared folders as one huge inbox. For ease of filtering
+will interpret all shared folders as one huge inbox. For the ease of filtering
 there is a mail header `X-Net-Eboks-Shareid` that contains numeric identifier
 of the shared folder.
 

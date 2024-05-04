@@ -13,7 +13,7 @@ if ($what eq 'wizard') {
 	system 'start /b http://localhost:9999/';
 	print "You can close [x] this window when finished or if you want to abort the process\n\n";
 	print "Starting authenticator...\n";
-	system 'eboks-authenticate --win32-install' and die "Cannot run eboks-authenticate:$!\n";
+	system 'eboks-authenticate-mitid --win32-install' and die "Cannot run eboks-authenticate-mitid:$!\n";
 } elsif ($what eq 'install') {
 	open F, ">", $cmd or die $!;
 	print F '@start /b wperl "' . $Config{sitebin} . '/eboks2pop" -p 8110' . "\n";
