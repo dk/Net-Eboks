@@ -6,7 +6,7 @@ use Getopt::Long;
 
 my %opt = (
 	cpr        => '',
-	pincode    => '',
+	password   => '',
 	share      => '0',
 	'list-shares' => 0,
 	'list-messages' => 0,
