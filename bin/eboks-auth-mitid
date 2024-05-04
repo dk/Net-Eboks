@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-BEGIN { $ENV{IO_LAMBDA_DEBUG} = 'http=2' }
+#BEGIN { $ENV{IO_LAMBDA_DEBUG} = 'http=2' }
 package main;
 use v5.26;
 use IO::Socket::INET;
