@@ -63,6 +63,15 @@ sub html($)
 	], $html)
 }
 
+sub pop3
+{
+	return IO::Socket::INET-> new(
+		PeerAddr => '127.0.0.1',
+		PeerPort => 8110,
+		Proto    => 'tcp',
+	);
+}
+
 sub h2($)      { html "<h2>$_[0]</h2>" . main . quit }
 sub h2x($$)    { html "<h2>$_[0]</h2><p>$_[1]" . main . quit } 
 sub error($)   { h2x( 'Error', $_[0] ) }
@@ -185,6 +194,48 @@ sub params
 
 my %routes;
 %routes = (
+	'/win32_install' => sub { html <<'WIN32_INSTALL' . quit
+<h2>Welcome to the Eboks/MitID installation wizard</h2><p>
+First you need to install a POP3 proxy that will start with Windows.<p>
+<form action="/win32_install_do" method="POST">
+<input type="submit" name="install" value="Install">
+<input type="submit" name="remove" value="Remove">
+<input type="submit" name="stop" value="Stop">
+<input type="submit" name="start" value="Start">
+<input type="submit" name="check" value="Check">
+</form>
+<p><a href="/auth">Skip to eBoks authentication</a><p>
+WIN32_INSTALL
+	},
+
+	'/win32_install_do' => sub {
+		my $req = shift;
+		return (undef, "bad response") unless $req->method eq 'POST';
+		if ( $req->content =~ /^install/) {
+			my $resp = `eboks-install-win32 install 2>&1`;
+			return error "Something wrong happened:<p><pre>$resp</pre>" unless $resp =~ /LOOKS OKAY/;
+			system "eboks-install-win32 start";
+			my $pop3 = pop3;
+			return error 'Proxy installed but not started, please start manually or wait and recheck' unless $pop3;
+			return h2x 'Proxy installed okay', '<a href="/auth">Continue to eBoks authentication</a>';
+		} elsif ( $req->content =~ /^remove/) {
+			system "eboks-install-win32 stop";
+			system "eboks-install-win32 remove";
+			return h2 'POP3 proxy removed';
+		} elsif ( $req->content =~ /^start/) {
+			system "mitdk-install-win32 start";
+			goto DO_CHECK;
+		} elsif ( $req->content =~ /^stop/) {
+			system "mitdk-install-win32 stop";
+			goto DO_CHECK;
+		} elsif ( $req->content =~ /^check/) {
+		DO_CHECK:
+			return pop3 ? h2 'Running okay' : error 'Not running';
+		} else {
+			return $routes{'/'}->();
+		}
+	},
+
 	'/auth' => sub {
 
 		html <<INIT . ($win32_install ? main : '' ) . mailcheck . quit;
@@ -196,7 +247,7 @@ my %routes;
 the standard MitID dialog, that you need to login as you usually do.<br>
 If you are going to authorize the login with your MitID app, make sure that
 the requestor is "Mit-DK login".
-
+<p>
 Enter the E-boks password: <input type="password" name="password">
 
 <p>

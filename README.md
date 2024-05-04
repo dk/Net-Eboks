@@ -65,7 +65,8 @@ too](https://www.laptopmag.com/articles/how-to-set-up-auto-forwarding-in-outlook
 Upgrading
 ---------
 
-* Stop `eboks2pop` if running.
+* Windows: run `eboks-install-win32` and stop the server in the browser-based setup.
+Quit the setup.
 
 * Install the dev version from github. Download/clone the repo, then run
 
@@ -75,6 +76,11 @@ Upgrading
   make install
 ```
 (or `sudo make install`, depending); `gmake` instead of `make` for Windows.
+
+* Windows: run `eboks-install-win32` and start the server in the browser-based setup.
+Quit the setup.
+
+* Linux: restart `eboks2pop` using your system tools.
 
 One-time MitID authentication
 -----------------------------
@@ -111,12 +117,12 @@ responses, kindly ping me back.
 
 * Other browsers: I didn't care but again patches to this text are welcome.
 
-The authentication step should be done only once per user, not per installation
-- after the registration you can access eBoks from any server that has this
-module installed.
-
 **Security note**: *No data is stored on the computer in the process, the only record is stored
 on the eBoks server itself*.
+
+The authentication step should be done only once per user, not per
+installation.  after the registration you can access eBoks from any server that
+has this module installed.
 
 Operations
 ==========
@@ -135,10 +141,12 @@ Use eboks.dk as a POP3 server
 You may want this setup if you don't have a dedicated server, or don't want
 to spam your mail by eBoks. You can run everything on a single desktop.
 
-1) On command line, type `eboks2pop`
+1) On command line, type `eboks2pop`. On windows, this is done autmatically and
+is not needed if you performed installation using the `eboks-install-win32`
+script.
 
 2) Connect your mail client to POP3 server at localhost, where username is
-your CPR code such as f.ex: 0123456-7890 and password is your mobile pincode.
+your CPR code such as f.ex: 0123456-7890 and password is your mobile password.
 
 Use on mail server
 ------------------
@@ -169,12 +177,12 @@ setup is basically same as in previous section, but see
 The problem you might encounter is that the module generates mails as
 originated from `noreply@e-boks.dk` and f.ex. Gmail won't accept that due to
 [SPF](https://en.wikipedia.org/wiki/Sender_Policy_Framework). You can change
-that I<From:> address to another by setting the environment variable MAILFROM.
+that *From:* address to another by setting the environment variable `MAILFROM`.
 Alternatively, see if rewriting the sender as in
 `examples/procmail.forward.srs` helps.
 
-Read associated eBoks shares
-----------------------------
+Read the associated eBoks shares
+--------------------------------
 
 If you have associated mailboxes, that companies open for you, you can access them in two ways.
 
