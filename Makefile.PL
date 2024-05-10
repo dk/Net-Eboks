@@ -9,7 +9,7 @@ WriteMakefile(
 	ABSTRACT_FROM  => 'Eboks.pm',
 	VERSION_FROM   => 'Eboks.pm',
         EXE_FILES      => [
-		map { "bin/eboks$_" } qw(2pop -dump -authenticate),
+		map { "bin/eboks$_" } qw(2pop -dump -auth-mitid),
 		(($^O =~ /win32/i) ? '-install-win32' : ())
 	],
         LICENSE        => 'freebsd',
