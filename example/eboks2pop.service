@@ -1,0 +1,18 @@
+# install me with this:
+#
+# sudo cp examples/eboks2pop.service /usr/lib/systemd/system
+# systemctl enable eboks2pop
+# systemctl start eboks2pop
+# systemctl status eboks2pop
+[Unit]
+Description=Net::Eboks POP3 daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/eboks2pop -p 8110
+User=nobody
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

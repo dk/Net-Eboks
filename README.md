@@ -162,7 +162,7 @@ This is the setup I use on my own remote server, where I connect to using
 email clients to read my mail.
 
 1) Create a startup script, f.ex. for FreeBSD see `example/eboks2pop.freebsd`,
-and for Debian/Ubuntu see `examples/eboks2pop.debian`
+and for systemd-based unices see `examples/eboks2pop.service`
 
 2) Install *procmail* and *fetchmail*. Look into `example/procmailrc.local` and
 and `examples/fetchmail` (the latter needs to have permissions 0600). 
