@@ -298,7 +298,7 @@ INIT
 	},
 
 	# case with private only
-	'/mitid' => sub {
+	'/login/mitid' => sub {
 		my $req = shift;
 		$req->uri("https://nemlog-in.mitid.dk/login/mitid");
 		$req->header( Referer => 'https://nemlog-in.mitid.dk/login/mitid');
