@@ -21,7 +21,7 @@ PIDFILE=/run/eboks2pop.pid
 
 [ -x "$DAEMON_SBIN" ] || exit 0
 
-DAEMON_OPTS="-p 8110"
+DAEMON_OPTS="-p 8110 -a 127.0.0.1"
 
 . /lib/lsb/init-functions
 

@@ -10,7 +10,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/eboks2pop -p 8110
+ExecStart=/usr/local/bin/eboks2pop -p 8110 -a 127.0.0.1
 User=nobody
 Restart=always
 

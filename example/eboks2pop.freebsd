@@ -10,5 +10,5 @@ name="eboks2pop"
 rcvar="eboks2pop_enable"
 load_rc_config $name
 command="/usr/sbin/daemon"
-command_args="-u nobody -p /var/run/eboks2pop.pid /usr/local/bin/perl /usr/local/bin/eboks2pop -p 8110"
+command_args="-u nobody -p /var/run/eboks2pop.pid /usr/local/bin/perl /usr/local/bin/eboks2pop -p 8110 -a 127.0.0.1"
 run_rc_command "$1"
